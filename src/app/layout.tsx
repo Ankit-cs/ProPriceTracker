@@ -5,7 +5,7 @@ import "./globals.css";
 
 
 export const metadata: Metadata = {
-  title: "Frugal Mind",
+  title: "Mudra",
   description: "A smart software to track all the goods",
 };
 
