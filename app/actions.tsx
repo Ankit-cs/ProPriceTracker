@@ -32,8 +32,8 @@ export async function addProduct(formData) {
       return { error: "Could not extract product information from this URL" };
     }
 
-    const newPrice = parseFloat(productData.currentPrice);
-    const currency = productData.currencyCode || "USD";
+    const newPrice = productData.currentPrice;
+    const currency = productData.currencyCode || "INR";
 
     // Check if product exists to determine if it's an update
     const { data: existingProduct } = await supabase
