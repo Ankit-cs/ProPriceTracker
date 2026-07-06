@@ -31,9 +31,9 @@ function DialogClose({
 }
 
 function DialogOverlay({
-  className,
+  className = undefined,
   ...props
-}) {
+}: any) {
   return (
     <DialogPrimitive.Overlay
       data-slot="dialog-overlay"
@@ -46,11 +46,11 @@ function DialogOverlay({
 }
 
 function DialogContent({
-  className,
+  className = undefined,
   children,
   showCloseButton = true,
   ...props
-}) {
+}: any) {
   return (
     <DialogPortal data-slot="dialog-portal">
       <DialogOverlay />
@@ -76,9 +76,9 @@ function DialogContent({
 }
 
 function DialogHeader({
-  className,
+  className = undefined,
   ...props
-}) {
+}: any) {
   return (
     <div
       data-slot="dialog-header"
@@ -88,9 +88,9 @@ function DialogHeader({
 }
 
 function DialogFooter({
-  className,
+  className = undefined,
   ...props
-}) {
+}: any) {
   return (
     <div
       data-slot="dialog-footer"
@@ -100,9 +100,9 @@ function DialogFooter({
 }
 
 function DialogTitle({
-  className,
+  className = undefined,
   ...props
-}) {
+}: any) {
   return (
     <DialogPrimitive.Title
       data-slot="dialog-title"
@@ -112,9 +112,9 @@ function DialogTitle({
 }
 
 function DialogDescription({
-  className,
+  className = undefined,
   ...props
-}) {
+}: any) {
   return (
     <DialogPrimitive.Description
       data-slot="dialog-description"
