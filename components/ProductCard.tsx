@@ -45,15 +45,29 @@ export default function ProductCard({ product }) {
           )}
 
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-gray-900 line-clamp-2 mb-2">
+            <h3 className="font-medium text-lg text-ink line-clamp-2 mb-3">
               {product.name}
             </h3>
 
             <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-bold text-orange-500">
-                {product.currency} {product.current_price}
+              <span className="text-2xl font-bold text-foreground">
+                {(() => {
+                  let code = product.currency || 'INR';
+                  if (code === '₹' || code === 'â¹') code = 'INR';
+                  if (code.length !== 3) code = 'INR';
+                  try {
+                    return new Intl.NumberFormat('en-IN', {
+                      style: 'currency',
+                      currency: code,
+                      maximumFractionDigits: 0
+                    }).format(product.current_price);
+                  } catch (e) {
+                    // Fallback if currency code is still invalid
+                    return `${product.currency} ${product.current_price}`;
+                  }
+                })()}
               </span>
-              <Badge variant="secondary" className="gap-1">
+              <Badge variant="secondary" className="gap-1 bg-green-100 text-green-700 hover:bg-green-100 border-none font-medium">
                 <TrendingDown className="w-3 h-3" />
                 Tracking
               </Badge>

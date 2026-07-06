@@ -135,7 +135,7 @@ export async function getPriceHistory(productId) {
     const supabase = createClient(cookieStore);
     const { data, error } = await supabase
       .from("price_history")
-      .select("*")-
+      .select("*")
       .eq("product_id", productId)
       .order("checked_at", { ascending: true });
 
