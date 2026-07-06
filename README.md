@@ -1,8 +1,10 @@
 # ProPriceTracker - Advanced E-Commerce Price Monitor
 
+**Live Demo:** [https://khareedley.vercel.app](https://khareedley.vercel.app)
+
 ProPriceTracker is an intelligent and automated price tracking application that allows users to monitor product prices across various e-commerce platforms. Built with a modern Next.js stack, it uses Firecrawl for structured scraping, Supabase for scalable backend operations, and Resend for transactional email alerts.
 
-## 🎯 Key Features
+## Key Features
 
 - 🛒 **Universal Tracking:** Monitor items from Amazon, BestBuy, Zara, Walmart, and virtually any e-commerce site.
 - 📈 **Price Trends:** Visualize price history through detailed, interactive charts.
@@ -10,7 +12,7 @@ ProPriceTracker is an intelligent and automated price tracking application that 
 - 🤖 **Automated Checks:** Background cron jobs scrape and update prices daily.
 - 📬 **Instant Alerts:** Receive customized emails the moment a price drops.
 
-## 🏗️ Architecture Flow
+## Architecture Flow
 
 ```mermaid
 sequenceDiagram
@@ -42,14 +44,14 @@ sequenceDiagram
     end
 ```
 
-## 🛠️ Technology Stack
+## Technology Stack
 
 - **Frontend:** Next.js (App Router), React, Tailwind CSS, shadcn/ui, Recharts
 - **Backend:** Next.js API Routes, Supabase (PostgreSQL, pg_cron)
 - **Extraction API:** Firecrawl (Handles JS rendering and proxies)
 - **Notifications:** Resend (Email Delivery)
 
-## 📁 Full Folder Structure
+## Full Folder Structure
 
 ```text
 ProPriceTracker/
@@ -95,8 +97,6 @@ ProPriceTracker/
 │   ├── email.ts                  # Resend email templates and logic
 │   ├── firecrawl.ts              # Firecrawl API scraper integration
 │   └── utils.ts                  # Helper functions (e.g., class names)
-├── public/                       # Static assets
-│   └── deal-drop-logo.png        # Application logo
 └── utils/                        # Utilities and Supabase clients
     └── supabase/
         ├── client.ts             # Browser client setup
@@ -104,30 +104,7 @@ ProPriceTracker/
         └── server.ts             # Server-side client setup
 ```
 
-## 🚀 Setup Instructions
 
-1. **Clone the Repository**
-   ```bash
-   git clone https://github.com/Ankit-cs/ProPriceTracker.git
-   cd ProPriceTracker
-   npm install
-   ```
 
-2. **Environment Configuration**
-   Copy `.env.example` to `.env` and fill in the values:
-   - Supabase project URL and keys.
-   - Firecrawl API key.
-   - Resend API key.
-   - A generated `CRON_SECRET`.
-
-3. **Supabase Database Setup**
-   Ensure your Supabase project has the necessary tables (`products`, `price_history`) and that RLS policies are enabled. Also, configure `pg_cron` to ping the `/api/cron/check-prices` endpoint daily.
-
-4. **Run Locally**
-   ```bash
-   npm run dev
-   ```
-   Open `http://localhost:3000` to start tracking!
-
-## 📄 License
+## License
 This project is licensed under the MIT License.
