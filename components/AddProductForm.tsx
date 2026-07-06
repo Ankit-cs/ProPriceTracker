@@ -41,23 +41,21 @@ export default function AddProductForm({ user }) {
   return (
     <>
       <form onSubmit={handleSubmit} className="w-full max-w-2xl mx-auto">
-        <div className="flex flex-col sm:flex-row gap-2">
+        <div className="flex flex-col sm:flex-row gap-3">
           <Input
             type="url"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             placeholder="Paste product URL (Amazon, Walmart, etc.)"
-            className="h-12 text-base"
+            className="h-12 text-base rounded-full px-5 bg-white/70 border-line text-ink placeholder:text-ink-muted focus-visible:ring-accent"
             required
             disabled={loading}
           />
 
-          <Button
+          <button
             type="submit"
             disabled={loading}
-            variant="default"
-            className="bg-orange-500 hover:bg-orange-600 h-10 sm:h-12 px-8"
-            size="lg"
+            className="bg-ink hover:bg-ink/90 text-background h-12 px-8 rounded-full font-medium transition-colors inline-flex items-center justify-center cursor-pointer shrink-0"
           >
             {loading ? (
               <>
@@ -67,7 +65,7 @@ export default function AddProductForm({ user }) {
             ) : (
               "Track Price"
             )}
-          </Button>
+          </button>
         </div>
       </form>
 
