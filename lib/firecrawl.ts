@@ -4,13 +4,20 @@ const firecrawl = new FirecrawlApp({
   apiKey: process.env.FIRECRAWL_API_KEY,
 });
 
-export async function scrapeProduct(url) {
+export interface ScrapedProduct {
+  productName: string;
+  currentPrice: number;
+  currencyCode?: string;
+  productImageUrl?: string;
+}
+
+export async function scrapeProduct(url: string): Promise<ScrapedProduct> {
   try {
     const result = await firecrawl.scrapeUrl(url, {
-      formats: ["extract"],
-      extract: {
+      formats: [{
+        type: "json",
         prompt:
-          "Extract the product name as 'productName', current price as a number as 'currentPrice', currency code (USD, EUR, etc) as 'currencyCode', and product image URL as 'productImageUrl' if available",
+          "Extract the product name as 'productName', current price as a number as 'currentPrice', currency code (INR, USD, EUR, etc) as 'currencyCode', and product image URL as 'productImageUrl' if available",
         schema: {
           type: "object",
           properties: {
@@ -21,11 +28,11 @@ export async function scrapeProduct(url) {
           },
           required: ["productName", "currentPrice"],
         },
-      },
+      }],
     });
 
-    // Firecrawl returns data in result.extract
-    const extractedData = result.extract;
+    // Firecrawl returns data in result.json in v2
+    const extractedData = result.json as ScrapedProduct;
 
     if (!extractedData || !extractedData.productName) {
       throw new Error("No data extracted from URL");
