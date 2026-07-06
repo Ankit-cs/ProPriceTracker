@@ -3,9 +3,9 @@ import * as React from "react"
 import { cn } from "@/lib/utils"
 
 function Card({
-  className,
+  className = undefined,
   ...props
-}) {
+}: any) {
   return (
     <div
       data-slot="card"
@@ -18,9 +18,9 @@ function Card({
 }
 
 function CardHeader({
-  className,
+  className = undefined,
   ...props
-}) {
+}: any) {
   return (
     <div
       data-slot="card-header"
@@ -33,9 +33,9 @@ function CardHeader({
 }
 
 function CardTitle({
-  className,
+  className = undefined,
   ...props
-}) {
+}: any) {
   return (
     <div
       data-slot="card-title"
@@ -45,9 +45,9 @@ function CardTitle({
 }
 
 function CardDescription({
-  className,
+  className = undefined,
   ...props
-}) {
+}: any) {
   return (
     <div
       data-slot="card-description"
@@ -57,9 +57,9 @@ function CardDescription({
 }
 
 function CardAction({
-  className,
+  className = undefined,
   ...props
-}) {
+}: any) {
   return (
     <div
       data-slot="card-action"
@@ -72,16 +72,16 @@ function CardAction({
 }
 
 function CardContent({
-  className,
+  className = undefined,
   ...props
-}) {
+}: any) {
   return (<div data-slot="card-content" className={cn("px-6", className)} {...props} />);
 }
 
 function CardFooter({
-  className,
+  className = undefined,
   ...props
-}) {
+}: any) {
   return (
     <div
       data-slot="card-footer"
