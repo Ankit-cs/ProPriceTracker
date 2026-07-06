@@ -135,7 +135,7 @@ export async function getPriceHistory(productId) {
     const supabase = createClient(cookieStore);
     const { data, error } = await supabase
       .from("price_history")
-      .select("*")
+      .select("*")-
       .eq("product_id", productId)
       .order("checked_at", { ascending: true });
 
@@ -144,6 +144,47 @@ export async function getPriceHistory(productId) {
   } catch (error) {
     console.error("Get price history error:", error);
     return [];
+  }
+}
+
+export async function testPriceDropEmail(productId) {
+  try {
+    const cookieStore = await cookies();
+    const supabase = createClient(cookieStore);
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user || !user.email) {
+      return { error: "User not authenticated or email missing" };
+    }
+
+    const { data: product, error } = await supabase
+      .from("products")
+      .select("*")
+      .eq("id", productId)
+      .single();
+
+    if (error || !product) {
+      return { error: "Product not found" };
+    }
+
+    // Simulate a 10% price drop
+    const oldPrice = parseFloat(product.current_price) * 1.1;
+    const newPrice = parseFloat(product.current_price);
+    
+    const { sendPriceDropAlert } = await import("@/lib/email");
+    
+    const result = await sendPriceDropAlert(
+      user.email,
+      product,
+      oldPrice,
+      newPrice
+    );
+
+    if (result.error) throw new Error(result.error);
+    return { success: true };
+  } catch (error) {
+    console.error("Test email error:", error);
+    return { error: error.message || "Failed to send test email" };
   }
 }
 
