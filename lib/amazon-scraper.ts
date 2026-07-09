@@ -163,7 +163,7 @@ export async function scrapeAmazonProduct(url: string): Promise<ScrapedProduct> 
         const shortDescription = $("#featurebullets_feature_div").text().trim().replace(/\s+/g, ' ') || 
                                  $("#feature-bullets").text().trim().replace(/\s+/g, ' ') || "";
         const fullDescription = $("#productDescription").text().trim().replace(/\s+/g, ' ') || 
-                                $("#aplus").text().trim().replace(/\s+/g, ' ') || "";
+                                 $("#aplus").text().trim().replace(/\s+/g, ' ') || "";
 
         const images =
           $("#imgBlkFront").attr("data-a-dynamic-image") ||
