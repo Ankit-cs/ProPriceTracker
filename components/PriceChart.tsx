@@ -51,6 +51,17 @@ export default function PriceChart({ productId }: { productId: string }) {
           });
         }
 
+        // Extend the line to today if the last data point isn't today
+        const lastPoint = chartData[chartData.length - 1];
+        const today = new Date();
+        if (lastPoint && lastPoint.rawDate.toDateString() !== today.toDateString()) {
+           chartData.push({
+             date: today.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+             price: lastPoint.price,
+             rawDate: today,
+           });
+        }
+
         setData(chartData);
         
         const latestPrice = chartData[chartData.length - 1].price;
