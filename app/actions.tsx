@@ -3,6 +3,7 @@
 import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 import { scrapeProduct } from "@/lib/firecrawl";
+import { scrapeAmazonProduct } from "@/lib/amazon-scraper";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -24,8 +25,13 @@ export async function addProduct(formData) {
       return { error: "Not authenticated" };
     }
 
-    // Scrape product data with Firecrawl
-    const productData = await scrapeProduct(url);
+    // Scrape product data with Amazon Scraper or Firecrawl
+    let productData;
+    if (url.includes("amazon.")) {
+      productData = await scrapeAmazonProduct(url);
+    } else {
+      productData = await scrapeProduct(url);
+    }
 
     if (!productData.productName || !productData.currentPrice) {
       console.log(productData, "productData");
@@ -33,7 +39,7 @@ export async function addProduct(formData) {
     }
 
     const newPrice = productData.currentPrice;
-    const currency = productData.currencyCode || "INR";
+    const currency = productData.currencyCode || productData.currency || "INR";
 
     // Check if product exists to determine if it's an update
     const { data: existingProduct } = await supabase
@@ -45,19 +51,32 @@ export async function addProduct(formData) {
 
     const isUpdate = !!existingProduct;
 
+    const updateData: any = {
+      user_id: user.id,
+      url,
+      name: productData.productName,
+      current_price: newPrice,
+      currency: currency,
+      image_url: productData.productImageUrl,
+      updated_at: new Date().toISOString(),
+    };
+
+    if (productData.amazonId !== undefined) {
+      updateData.amazon_id = productData.amazonId;
+      updateData.rating = productData.rating || 0;
+      updateData.reviews_count = productData.reviewsCount || 0;
+      updateData.short_description = productData.shortDescription || "";
+      updateData.full_description = productData.fullDescription || "";
+      updateData.is_amazon_choice = productData.isAmazonChoice || false;
+      updateData.is_discounted = productData.isDiscounted || false;
+      updateData.original_price = productData.originalPrice || 0;
+    }
+
     // Upsert product (insert or update based on user_id + url)
     const { data: product, error } = await supabase
       .from("products")
       .upsert(
-        {
-          user_id: user.id,
-          url,
-          name: productData.productName,
-          current_price: newPrice,
-          currency: currency,
-          image_url: productData.productImageUrl,
-          updated_at: new Date().toISOString(),
-        },
+        updateData,
         {
           onConflict: "user_id,url", // Unique constraint on user_id + url
           ignoreDuplicates: false, // Always update if exists
@@ -68,17 +87,12 @@ export async function addProduct(formData) {
 
     if (error) throw error;
 
-    // Add to price history if it's a new product OR price changed
-    const shouldAddHistory =
-      !isUpdate || existingProduct.current_price !== newPrice;
-
-    if (shouldAddHistory) {
-      await supabase.from("price_history").insert({
-        product_id: product.id,
-        price: newPrice,
-        currency: currency,
-      });
-    }
+    // Always add to price history to log that a manual check occurred
+    await supabase.from("price_history").insert({
+      product_id: product.id,
+      price: newPrice,
+      currency: currency,
+    });
 
     revalidatePath("/");
     return {
