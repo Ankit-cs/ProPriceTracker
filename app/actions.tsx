@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 import { scrapeProduct } from "@/lib/firecrawl";
 import { scrapeAmazonProduct } from "@/lib/amazon-scraper";
+import { searchAmazonProducts } from "@/lib/amazon-search-scraper";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -209,3 +210,22 @@ export async function signOut() {
   revalidatePath("/");
   redirect("/");
 }
+
+export async function searchAmazon(keyword: string, limit = 10) {
+  try {
+    const cookieStore = await cookies();
+    const supabase = createClient(cookieStore);
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return { error: "Not authenticated" };
+    }
+
+    const results = await searchAmazonProducts(keyword, limit);
+    return { success: true, results };
+  } catch (error: any) {
+    console.error("Search Amazon error:", error);
+    return { error: error.message || "Failed to search Amazon" };
+  }
+}
+
