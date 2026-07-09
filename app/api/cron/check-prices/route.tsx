@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { scrapeProduct } from "@/lib/firecrawl";
+import { scrapeAmazonProduct } from "@/lib/amazon-scraper";
 import { sendPriceDropAlert } from "@/lib/email";
 
 export async function POST(request) {
@@ -36,7 +37,12 @@ export async function POST(request) {
 
     for (const product of products) {
       try {
-        const productData = await scrapeProduct(product.url);
+        let productData;
+        if (product.url.includes("amazon.")) {
+          productData = await scrapeAmazonProduct(product.url);
+        } else {
+          productData = await scrapeProduct(product.url);
+        }
 
         if (!productData.currentPrice) {
           results.failed++;
@@ -46,23 +52,38 @@ export async function POST(request) {
         const newPrice = productData.currentPrice;
         const oldPrice = parseFloat(product.current_price);
 
-        await supabase
-          .from("products")
-          .update({
+        const updateData: any = {
             current_price: newPrice,
             currency: productData.currencyCode || product.currency,
             name: productData.productName || product.name,
             image_url: productData.productImageUrl || product.image_url,
             updated_at: new Date().toISOString(),
-          })
+        };
+
+        if (productData.amazonId !== undefined) {
+          updateData.amazon_id = productData.amazonId;
+          updateData.rating = productData.rating || 0;
+          updateData.reviews_count = productData.reviewsCount || 0;
+          updateData.short_description = productData.shortDescription || "";
+          updateData.full_description = productData.fullDescription || "";
+          updateData.is_amazon_choice = productData.isAmazonChoice || false;
+          updateData.is_discounted = productData.isDiscounted || false;
+          updateData.original_price = productData.originalPrice || 0;
+        }
+
+        await supabase
+          .from("products")
+          .update(updateData)
           .eq("id", product.id);
 
+        // Also, always insert into price history when cron runs to show the check happened today
+        await supabase.from("price_history").insert({
+          product_id: product.id,
+          price: newPrice,
+          currency: productData.currencyCode || productData.currency || product.currency,
+        });
+
         if (oldPrice !== newPrice) {
-          await supabase.from("price_history").insert({
-            product_id: product.id,
-            price: newPrice,
-            currency: productData.currencyCode || product.currency,
-          });
 
           results.priceChanges++;
 
