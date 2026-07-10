@@ -1,6 +1,6 @@
 import { createClient } from "@/utils/supabase/server";
 import { cookies } from "next/headers";
-import { getProducts } from "./actions";
+import { getProducts, getMockUser } from "./actions";
 import AddProductForm from "@/components/AddProductForm";
 import ProductCard from "@/components/ProductCard";
 import { TrendingDown, Shield, Bell, Rabbit } from "lucide-react";
@@ -9,9 +9,14 @@ import Image from "next/image";
 export default async function Home() {
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+
+  let user: any = await getMockUser();
+  if (!user) {
+    const {
+      data: { user: authUser },
+    } = await supabase.auth.getUser();
+    user = authUser;
+  }
 
   const products = user ? await getProducts() : [];
 
