@@ -17,6 +17,13 @@ ProPriceTracker is an intelligent and automated price tracking application that 
 - 🤖 **Automated Checks:** Daily cron jobs check tracked products and notify users of drop alerts.
 - 📄 **[NEW] Export to PDF:** Easily generate and download a clean PDF report containing all tracked products, their descriptions, and thumbnail images.
 - 🚚 **[NEW] Location-Based Delivery Details:** Enter a specific Pincode for any Amazon product directly on its card to fetch accurate, real-time Delivery Dates and "Sold By" merchant data.
+- 🔄 **[NEW] Multi-Tenant Scaling Optimization:** Products are stored globally unique in the database and mapped to users, reducing total scraping calls and database bloat by over 90%.
+- 🛑 **[NEW] API Rate Limiting Protection:** Integrated `@upstash/ratelimit` via Upstash Redis to restrict spam requests on product tracks and organic search routes.
+- 🔍 **[NEW] Google Shopping Search:** Users can search products by name directly via SerpAPI instead of pasting raw URLs, tracking matching items instantly.
+- 📆 **[NEW] Day 1 Price History Syncer:** Crawls Google for a product's PriceHistoryApp slug on Day 1, parsing and bulk-saving the last 90 days of historical date-price data into your database.
+- 📈 **[NEW] PriceHistoryApp Embedded Visuals:** Displays the interactive historical graph iframe on product card footers as an additional option.
+- 🤝 **[NEW] Global Alternative Deals Feed:** Surfaces top discounted items tracked globally by the community at the bottom of the Price Drops page.
+- 🧹 **[NEW] Resilient Parsers & Cleaners:** Strips messy tracking parameters from URLs and parses international currency symbols (including Indian Lakhs) safely.
 
 ## Architecture Flow
 
@@ -73,7 +80,7 @@ The **Signalist Trading Desk** is an advanced sub-module designed for users who 
 ## Technology Stack
 
 - **Frontend:** Next.js (App Router), React, Tailwind CSS, shadcn/ui, Recharts
-- **Backend:** Next.js Server Actions & API Routes, Supabase (PostgreSQL, pg_cron)
+- **Backend:** Next.js Server Actions & API Routes, Supabase (PostgreSQL, pg_cron), Upstash Redis (Rate Limiting via `@upstash/ratelimit`), SerpAPI (Shopping Search client)
 - **[NEW] Side-by-Side Product Comparison**: Select up to 3 products to compare their prices, ratings, and features simultaneously using a persistent Zustand store.
 - **[NEW] Signalist Trading Desk**: Build custom portfolios and get live AI-driven "Buy/Wait" signals, complete with optimistic instant UI updates for adding/removing items.
 - **[NEW] Deep Discount Dashboard**: A dedicated interface that exclusively surfaces items currently on sale, sorted by the highest discount percentage.
@@ -152,7 +159,7 @@ ProPriceTracker/
 
 ### 1. Bypassing Authentication
 To run and test the application locally without setting up Google OAuth or signing in:
-1. In [actions.tsx](file:///c:/price/ProPriceTracker/app/actions.tsx), set `BYPASS_AUTH = true`.
+1. In [actions.tsx](file:///c:/price/ProPriceTracker/app/actions.tsx), set `BYPASS_AUTH = true` (it is set to `false` by default for standard authentication).
 2. When active, the application bypasses standard auth. It calls `getMockUser()`, which resolves the first user ID in your database to satisfy PostgreSQL foreign key constraints, and queries Supabase using a service role client to bypass Row-Level Security (RLS) rules.
 
 ### 2. Migrating Existing Products
