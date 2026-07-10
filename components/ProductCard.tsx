@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRealtimePrice } from "@/hooks/useRealtimePrice";
 import { deleteProduct, updateProductPincode } from "@/app/actions";
+import { getTieredRecommendation } from "@/lib/ai-recommendations";
 import { toast } from "sonner";
 import PriceChart from "./PriceChart";
 import {
@@ -182,6 +183,25 @@ export default function ProductCard({ product }) {
                     {stats.sentiment.label}
                   </Badge>
                 )}
+                {(() => {
+                  const rec = getTieredRecommendation(
+                    livePrice,
+                    product.average_price ? parseFloat(product.average_price) : livePrice,
+                    product.lowest_price ? parseFloat(product.lowest_price) : livePrice,
+                    product.discount_rate ? parseFloat(product.discount_rate) : 0
+                  );
+                  return (
+                    <Badge className={`text-[10px] px-2 py-0.5 rounded h-fit gap-1 ${
+                      rec.type === 'excellent' || rec.type === 'good'
+                        ? 'bg-green-500/10 text-green-600 border-green-500/20'
+                        : rec.type === 'decent' || rec.type === 'moderate'
+                        ? 'bg-amber-500/10 text-amber-600 border-amber-500/20'
+                        : 'bg-red-500/10 text-red-600 border-red-500/20'
+                    } border font-semibold`}>
+                      {rec.message}
+                    </Badge>
+                  );
+                })()}
               </div>
             )}
 
@@ -222,6 +242,22 @@ export default function ProductCard({ product }) {
                   Save {formatPrice(product.original_price - livePrice, product.currency)} ({Math.round(((product.original_price - livePrice) / product.original_price) * 100)}% off)
                 </div>
               )}
+
+              {/* Aggregates Dashboard */}
+              <div className="grid grid-cols-3 gap-2 mt-2 bg-neutral-50/50 p-2 rounded-xl border border-line/40 text-center">
+                <div>
+                  <p className="text-[9px] text-ink-muted uppercase font-bold tracking-wider">Lowest</p>
+                  <p className="text-xs font-semibold text-green-600">{formatPrice(product.lowest_price || livePrice, product.currency)}</p>
+                </div>
+                <div>
+                  <p className="text-[9px] text-ink-muted uppercase font-bold tracking-wider">Average</p>
+                  <p className="text-xs font-semibold text-neutral-700">{formatPrice(product.average_price || livePrice, product.currency)}</p>
+                </div>
+                <div>
+                  <p className="text-[9px] text-ink-muted uppercase font-bold tracking-wider">Highest</p>
+                  <p className="text-xs font-semibold text-red-600">{formatPrice(product.highest_price || livePrice, product.currency)}</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -312,7 +348,19 @@ export default function ProductCard({ product }) {
 
       {showChart && (
         <CardFooter className="pt-0 flex flex-col items-stretch gap-4">
-          <PriceChart productId={product.id} initialAlertsEnabled={product.alerts_enabled} initialTargetDiscount={product.target_discount_percent} />
+          {product.geturl ? (
+            <iframe 
+              src={`https://pricehistoryapp.com/embed/${product.geturl}`} 
+              width="100%" 
+              height="300" 
+              frameBorder="0" 
+              allowTransparency="true" 
+              scrolling="no" 
+              className="rounded-xl border border-line bg-white"
+            ></iframe>
+          ) : (
+            <PriceChart productId={product.id} initialAlertsEnabled={product.alerts_enabled} initialTargetDiscount={product.target_discount_percent} />
+          )}
           
           <div className="bg-surface-2 rounded-xl p-4 mt-2 border border-line">
             <h4 className="font-semibold text-sm text-ink mb-3 flex items-center gap-1.5">
