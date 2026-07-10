@@ -1,16 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { addMultipleProducts } from "@/app/actions";
+import { addMultipleProducts, addProduct } from "@/app/actions";
 import AuthModal from "./AuthModal";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Loader2 } from "lucide-react";
+import { Loader2, Search, Link2, PlusCircle } from "lucide-react";
 import { toast } from "sonner";
 
 export default function AddProductForm({ user }) {
+  const [mode, setMode] = useState<"url" | "search">("url");
   const [url, setUrl] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(false);
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searching, setSearching] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
 
   const handleSubmit = async (e) => {
@@ -38,40 +40,173 @@ export default function AddProductForm({ user }) {
     setLoading(false);
   };
 
+  const handleSearch = async (e) => {
+    e.preventDefault();
+    if (!searchQuery.trim()) return;
+
+    setSearching(true);
+    setSearchResults([]);
+    try {
+      const res = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}`);
+      const data = await res.json();
+      if (data.error) {
+        toast.error(data.error);
+      } else {
+        setSearchResults(data.results || []);
+      }
+    } catch (err) {
+      toast.error("Failed to fetch search results");
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const handleTrackSearchResult = async (productLink: string) => {
+    if (!user) {
+      setShowAuthModal(true);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const formData = new FormData();
+      formData.append("url", productLink);
+      const result = await addProduct(formData);
+      if (result.error) {
+        toast.error(result.error);
+      } else {
+        toast.success(result.message || "Product tracked successfully!");
+      }
+    } catch (err) {
+      toast.error("An error occurred while tracking the product");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <>
-      <form onSubmit={handleSubmit} className="w-full max-w-2xl mx-auto">
-        <div className="flex flex-col gap-3">
-          <textarea
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            placeholder="Paste product URLs (separate multiple URLs with commas or new lines)"
-            className="w-full min-h-[80px] p-4 text-base rounded-2xl bg-white/70 border border-line text-ink placeholder:text-ink-muted focus-visible:ring-accent focus:outline-none focus:ring-2"
-            required
-            disabled={loading}
-          />
-
+      <div className="w-full max-w-2xl mx-auto mb-6">
+        {/* Toggle Mode buttons */}
+        <div className="flex justify-center gap-4 mb-4">
           <button
-            type="submit"
-            disabled={loading}
-            className="bg-ink hover:bg-ink/90 text-background h-12 px-8 rounded-full font-medium transition-colors inline-flex items-center justify-center cursor-pointer shrink-0 self-end"
+            onClick={() => setMode("url")}
+            className={`px-4 py-2 rounded-full font-medium text-sm flex items-center gap-2 transition-all ${
+              mode === "url"
+                ? "bg-ink text-background shadow-md"
+                : "bg-white/50 border border-line text-ink-muted hover:text-ink"
+            }`}
           >
-            {loading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Processing...
-              </>
-            ) : (
-              "Track Price(s)"
-            )}
+            <Link2 className="h-4 w-4" />
+            Paste URLs
+          </button>
+          <button
+            onClick={() => setMode("search")}
+            className={`px-4 py-2 rounded-full font-medium text-sm flex items-center gap-2 transition-all ${
+              mode === "search"
+                ? "bg-ink text-background shadow-md"
+                : "bg-white/50 border border-line text-ink-muted hover:text-ink"
+            }`}
+          >
+            <Search className="h-4 w-4" />
+            Search Products
           </button>
         </div>
-      </form>
 
-      <AuthModal
-        isOpen={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-      />
+        {mode === "url" ? (
+          <form onSubmit={handleSubmit} className="w-full">
+            <div className="flex flex-col gap-3">
+              <textarea
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                placeholder="Paste product URLs (separate multiple URLs with commas or new lines)"
+                className="w-full min-h-[80px] p-4 text-base rounded-2xl bg-white/70 border border-line text-ink placeholder:text-ink-muted focus-visible:ring-accent focus:outline-none focus:ring-2"
+                required
+                disabled={loading}
+              />
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="bg-ink hover:bg-ink/90 text-background h-12 px-8 rounded-full font-medium transition-colors inline-flex items-center justify-center cursor-pointer shrink-0 self-end"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  "Track Price(s)"
+                )}
+              </button>
+            </div>
+          </form>
+        ) : (
+          <div className="w-full flex flex-col gap-4">
+            <form onSubmit={handleSearch} className="flex gap-2 w-full">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search products by name (e.g. Sony WH-1000XM4)"
+                className="flex-1 px-4 h-12 rounded-full bg-white/70 border border-line text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-accent"
+                required
+                disabled={searching}
+              />
+              <button
+                type="submit"
+                disabled={searching}
+                className="bg-ink hover:bg-ink/90 text-background h-12 px-6 rounded-full font-medium transition-colors inline-flex items-center justify-center cursor-pointer"
+              >
+                {searching ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Search className="h-4 w-4" />
+                )}
+              </button>
+            </form>
+
+            {searchResults.length > 0 && (
+              <div className="bg-white/80 backdrop-blur-md rounded-2xl border border-line p-4 max-h-[300px] overflow-y-auto flex flex-col gap-3 shadow-lg">
+                {searchResults.map((item, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center justify-between gap-4 p-2 rounded-xl hover:bg-black/5 transition-all"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      {item.thumbnail && (
+                        <img
+                          src={item.thumbnail}
+                          alt={item.title}
+                          className="w-12 h-12 rounded-lg object-contain bg-white border border-line shrink-0"
+                        />
+                      )}
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-ink truncate max-w-md">
+                          {item.title}
+                        </p>
+                        <p className="text-xs font-semibold text-accent">
+                          {item.price || "Check site"}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleTrackSearchResult(item.product_link)}
+                      disabled={loading}
+                      className="bg-ink hover:bg-ink/90 text-background px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 shrink-0 transition-colors"
+                    >
+                      <PlusCircle className="h-3.5 w-3.5" />
+                      Track
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
     </>
   );
 }
