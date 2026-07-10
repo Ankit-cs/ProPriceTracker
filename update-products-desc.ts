@@ -38,7 +38,11 @@ async function updateDescriptions() {
         .from("products")
         .update({
           short_description: scrapedData.shortDescription || "",
-          full_description: scrapedData.fullDescription || ""
+          full_description: scrapedData.fullDescription || "",
+          description: scrapedData.fullDescription || "",
+          features: scrapedData.features || null,
+          sold_by: scrapedData.soldBy || null,
+          delivery_date: scrapedData.deliveryDate || null
         })
         .eq("id", product.id);
 
