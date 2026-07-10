@@ -15,6 +15,8 @@ ProPriceTracker is an intelligent and automated price tracking application that 
 - 🖼️ **[NEW] Hero Carousel:** Beautiful interactive product showcase on the landing page.
 - 🔒 **Dynamic Auth / Dev Bypass:** Secure Google OAuth integration, with a built-in `BYPASS_AUTH` toggle for frictionless local sandbox testing.
 - 🤖 **Automated Checks:** Daily cron jobs check tracked products and notify users of drop alerts.
+- 📄 **[NEW] Export to PDF:** Easily generate and download a clean PDF report containing all tracked products, their descriptions, and thumbnail images.
+- 🚚 **[NEW] Location-Based Delivery Details:** Enter a specific Pincode for any Amazon product directly on its card to fetch accurate, real-time Delivery Dates and "Sold By" merchant data.
 
 ## Architecture Flow
 
@@ -78,6 +80,8 @@ The **Signalist Trading Desk** is an advanced sub-module designed for users who 
 - **[NEW] Sales Calendar & Savings Predictor**: An interactive tool that calculates potential savings by delaying purchases until major upcoming e-commerce events (e.g., Prime Day, Black Friday).
 - **[NEW] Intelligent "Product Details" Parser**: Automatically scrapes the "Technical Details" section from Amazon into a structured JSON map (Key-Value pairs), stripping out messy HTML and emojis.
 - **[NEW] Command Palette (⌘K)**: Instantly jump between features using the global `cmdk` search menu.
+- **[NEW] PDF Generation**: Uses `pdfkit` to generate rich, well-formatted PDF reports of tracked products directly from the API routes.
+- **[NEW] Location-Aware Scraping**: Injects a base64-encoded JS snippet into the ScrapingAnt engine to interact with Amazon's location popover, enabling accurate extraction of region-specific delivery data.
 - **Extraction APIs:** 
   - **ScrapingAnt Client:** Advanced Amazon scraper using regional proxy routing (US, IN, GB, DE, FR, JP) and automatic bot-detection bypass.
   - **Firecrawl Client:** General e-commerce scraper for other sites.
