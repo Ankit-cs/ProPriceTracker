@@ -1,3 +1,4 @@
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 const { Client } = require('pg');
 require('dotenv').config(); // Need to load from .env
 
@@ -24,7 +25,8 @@ async function runMigration() {
       ADD COLUMN IF NOT EXISTS is_amazon_choice BOOLEAN DEFAULT false,
       ADD COLUMN IF NOT EXISTS is_discounted BOOLEAN DEFAULT false,
       ADD COLUMN IF NOT EXISTS original_price NUMERIC,
-      ADD COLUMN IF NOT EXISTS amazon_id TEXT;
+      ADD COLUMN IF NOT EXISTS amazon_id TEXT,
+      ADD COLUMN IF NOT EXISTS alerts_enabled BOOLEAN DEFAULT FALSE;
     `;
 
     await client.query(query);
