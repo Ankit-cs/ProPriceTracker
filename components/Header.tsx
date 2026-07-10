@@ -44,6 +44,9 @@ export default function Header({ user }) {
             <Link href="/news" prefetch={true} className={`px-3.5 py-1.5 rounded-full text-[13px] font-medium transition-colors ${isActive('/news') ? 'bg-ink/5 text-ink' : 'text-ink-soft hover:text-ink'}`}>
               News
             </Link>
+            <Link href="/signalist" prefetch={true} className={`px-3.5 py-1.5 rounded-full text-[13px] font-medium transition-colors ${isActive('/signalist') ? 'bg-ink/5 text-ink' : 'text-ink-soft hover:text-ink'}`}>
+              Dream Setup
+            </Link>
             <Link href="/ai-assistant" prefetch={true} className={`inline-flex items-center gap-1 px-3.5 py-1.5 rounded-full text-[13px] font-medium transition-colors ${isActive('/ai-assistant') ? 'bg-ink/5 text-ink' : 'text-ink-soft hover:text-ink'}`}>
               <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-accent" aria-hidden="true">
                 <path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"></path>
