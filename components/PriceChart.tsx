@@ -10,12 +10,21 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { getPriceHistory } from "@/app/actions";
+import { getPriceHistory, toggleAlerts } from "@/app/actions";
 import { Loader2, Bell, AlertTriangle, TrendingDown, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getNextUpcomingSale } from "@/lib/sales-events";
+import { toast } from "sonner";
 
-export default function PriceChart({ productId }: { productId: string }) {
+export default function PriceChart({ 
+  productId, 
+  initialAlertsEnabled = false,
+  initialTargetDiscount = 0
+}: { 
+  productId: string; 
+  initialAlertsEnabled?: boolean;
+  initialTargetDiscount?: number;
+}) {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState("30d");
@@ -23,6 +32,34 @@ export default function PriceChart({ productId }: { productId: string }) {
   const [averagePrice, setAveragePrice] = useState(0);
   const [minPrice, setMinPrice] = useState(0);
   const [aiVerdict, setAiVerdict] = useState({ title: "", description: "", confidence: 0, type: "neutral" });
+  const [targetDiscount, setTargetDiscount] = useState(initialTargetDiscount);
+  const [alertsEnabled, setAlertsEnabled] = useState(initialAlertsEnabled);
+  const [togglingAlerts, setTogglingAlerts] = useState(false);
+
+  const handleToggleAlerts = async () => {
+    setTogglingAlerts(true);
+    const targetState = !alertsEnabled;
+    const res = await toggleAlerts(productId, targetState, targetDiscount);
+    if (res.error) {
+      toast.error(res.error);
+    } else {
+      setAlertsEnabled(targetState);
+      toast.success(targetState ? (targetDiscount > 0 ? `Alerts enabled for ${targetDiscount}% drop!` : "Email alerts enabled!") : "Email alerts disabled.");
+    }
+    setTogglingAlerts(false);
+  };
+
+  const handleUpdateTarget = async (newVal: number) => {
+    setTargetDiscount(newVal);
+    if (alertsEnabled) {
+      setTogglingAlerts(true);
+      const res = await toggleAlerts(productId, true, newVal);
+      if (!res.error) {
+        toast.success(`Alert updated to ${newVal > 0 ? `${newVal}% drop` : 'any drop'}!`);
+      }
+      setTogglingAlerts(false);
+    }
+  };
 
   useEffect(() => {
     async function loadData() {
@@ -253,24 +290,45 @@ export default function PriceChart({ productId }: { productId: string }) {
           </ResponsiveContainer>
         </div>
 
-        <div className="flex items-center justify-between gap-4 p-4 bg-white rounded-lg border border-border/50 shadow-sm">
-          <div className="text-sm text-muted-foreground">
-            Get notified when the price drops below your target.
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-white rounded-lg border border-border/50 shadow-sm">
+          <div className="flex flex-col gap-1.5">
+            <div className="text-sm text-muted-foreground">
+              Get notified when the price drops below your target.
+            </div>
+            <select 
+              value={targetDiscount} 
+              onChange={(e) => handleUpdateTarget(Number(e.target.value))}
+              disabled={togglingAlerts}
+              className="text-sm border border-input rounded-md px-2 py-1.5 w-fit bg-background focus:ring-1 focus:ring-accent outline-none"
+            >
+              <option value={0}>Any Drop</option>
+              <option value={5}>5% Off</option>
+              <option value={10}>10% Off</option>
+              <option value={15}>15% Off</option>
+              <option value={20}>20% Off</option>
+              <option value={30}>30% Off</option>
+              <option value={40}>40% Off</option>
+              <option value={50}>50% Off</option>
+            </select>
           </div>
           
           <Button 
-            className="rounded-full gap-2 shrink-0" 
-            variant="default"
+            className={`rounded-full gap-2 shrink-0 transition-colors ${
+              alertsEnabled 
+                ? "bg-green-600 hover:bg-green-700 text-white border-none font-medium" 
+                : ""
+            }`}
+            variant={alertsEnabled ? "default" : "outline"}
             size="default"
-            onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
-              const btn = e.currentTarget;
-              btn.innerHTML = "Alerts Enabled ✓";
-              btn.classList.add("bg-green-600", "hover:bg-green-700", "text-white");
-              btn.disabled = true;
-            }}
+            onClick={handleToggleAlerts}
+            disabled={togglingAlerts}
           >
-            <Bell className="w-4 h-4" />
-            Notify me
+            {togglingAlerts ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Bell className={`w-4 h-4 ${alertsEnabled ? "fill-white" : ""}`} />
+            )}
+            {alertsEnabled ? "Alerts Enabled ✓" : "Notify me"}
           </Button>
         </div>
       </div>
