@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { scrapeProduct } from "@/lib/firecrawl";
-import { scrapeAmazonProduct } from "@/lib/amazon-scraper";
-import { sendPriceDropAlert } from "@/lib/email";
+import { scrapeAmazonProduct, cleanAmazonUrl } from "@/lib/amazon-scraper";
+import { sendConsolidatedPriceDropAlert } from "@/lib/email";
 
 export async function POST(request) {
   try {
@@ -35,13 +35,19 @@ export async function POST(request) {
       alertsSent: 0,
     };
 
-    for (const product of products) {
+    const userAlerts: Record<string, any[]> = {};
+
+    for (let i = 0; i < products.length; i++) {
+      const product = products[i];
       try {
         let productData;
-        if (product.url.includes("amazon.")) {
-          productData = await scrapeAmazonProduct(product.url);
+        const isAmazon = product.url.includes("amazon.") || product.url.includes("amzn.");
+        const cleanUrl = isAmazon ? cleanAmazonUrl(product.url) : product.url;
+        
+        if (isAmazon) {
+          productData = await scrapeAmazonProduct(cleanUrl);
         } else {
-          productData = await scrapeProduct(product.url);
+          productData = await scrapeProduct(cleanUrl);
         }
 
         if (!productData.currentPrice) {
@@ -51,6 +57,8 @@ export async function POST(request) {
 
         const newPrice = productData.currentPrice;
         const oldPrice = parseFloat(product.current_price);
+        const baselinePrice = parseFloat(product.last_notified_price || product.current_price);
+        const targetDiscount = parseFloat(product.target_discount_percent || 0);
 
         const updateData: any = {
             current_price: newPrice,
@@ -71,47 +79,68 @@ export async function POST(request) {
           updateData.original_price = productData.originalPrice || 0;
         }
 
+        if (newPrice !== oldPrice) {
+          results.priceChanges++;
+        }
+
+        // Logic for alerting based on the threshold scale
+        if (newPrice < baselinePrice && product.alerts_enabled) {
+          const priceDrop = baselinePrice - newPrice;
+          const percentageDrop = (priceDrop / baselinePrice) * 100;
+          
+          if (percentageDrop >= targetDiscount) {
+             if (!userAlerts[product.user_id]) {
+                userAlerts[product.user_id] = [];
+             }
+             userAlerts[product.user_id].push({
+                product,
+                oldPrice: baselinePrice,
+                newPrice: newPrice,
+                priceDrop: priceDrop,
+                percentageDrop: percentageDrop.toFixed(1)
+             });
+             // reset baseline to current new price so they don't keep getting emailed until it drops another x%
+             updateData.last_notified_price = newPrice;
+          }
+        }
+
         await supabase
           .from("products")
           .update(updateData)
           .eq("id", product.id);
 
-        // Also, always insert into price history when cron runs to show the check happened today
         await supabase.from("price_history").insert({
           product_id: product.id,
           price: newPrice,
           currency: productData.currencyCode || productData.currency || product.currency,
         });
 
-        if (oldPrice !== newPrice) {
-
-          results.priceChanges++;
-
-          if (newPrice < oldPrice) {
-            const {
-              data: { user },
-            } = await supabase.auth.admin.getUserById(product.user_id);
-
-            if (user?.email) {
-              const emailResult = await sendPriceDropAlert(
-                user.email,
-                product,
-                oldPrice,
-                newPrice
-              );
-
-              if (emailResult.success) {
-                results.alertsSent++;
-              }
-            }
-          }
-        }
-
         results.updated++;
       } catch (error) {
         console.error(`Error processing product ${product.id}:`, error);
         results.failed++;
       }
+
+      // Smart Delays: Wait 2-5 seconds between products to prevent getting rate-limited
+      if (i < products.length - 1) {
+        const sleepMs = Math.floor(Math.random() * 3000) + 2000;
+        await new Promise(r => setTimeout(r, sleepMs));
+      }
+    }
+
+    // Send Consolidated Email Digests
+    for (const [userId, alerts] of Object.entries(userAlerts)) {
+       try {
+           const { data: { user } } = await supabase.auth.admin.getUserById(userId);
+           if (user?.email) {
+             const emailResult = await sendConsolidatedPriceDropAlert(user.email, alerts);
+             if (emailResult.success) {
+               results.alertsSent += alerts.length;
+             }
+           }
+       } catch(err) {
+           console.error("Error sending digest email for user", userId, err);
+       }
     }
 
     return NextResponse.json({
