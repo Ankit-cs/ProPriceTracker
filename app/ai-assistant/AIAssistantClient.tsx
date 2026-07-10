@@ -12,17 +12,34 @@ export default function AIAssistantClient({ products }: { products: any[] }) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [analyzedProduct, setAnalyzedProduct] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [aiResponse, setAiResponse] = useState<string | null>(null);
+  const [sentimentScore, setSentimentScore] = useState<number | null>(null);
 
-  const handleAsk = () => {
+  const handleAsk = async () => {
     if (!selectedProduct) return;
     
     setIsLoading(true);
+    setAnalyzedProduct(selectedProduct);
+    setAiResponse(null);
+    setSentimentScore(null);
     
-    // Simulate AI thinking delay for better UX
-    setTimeout(() => {
-        setAnalyzedProduct(selectedProduct);
+    try {
+        const res = await fetch("/api/ai", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ query: query || "What do you think?", product: selectedProduct })
+        });
+        const data = await res.json();
+        setAiResponse(data.response || "No response received.");
+        if (data.sentimentScore !== undefined) {
+            setSentimentScore(data.sentimentScore);
+        }
+    } catch (error) {
+        console.error("AI Error:", error);
+        setAiResponse("Sorry, I encountered an error analyzing your request.");
+    } finally {
         setIsLoading(false);
-    }, 600);
+    }
   };
 
   return (
@@ -61,9 +78,20 @@ export default function AIAssistantClient({ products }: { products: any[] }) {
                 <div className="p-4 bg-muted/50 rounded-lg text-sm flex gap-3">
                   <Zap className="h-5 w-5 text-yellow-500 shrink-0" />
                   <div className="space-y-2">
-                    <p>
-                      <strong>AI Insight:</strong> Based on historical price trends and moving averages, the current price of ₹{analyzedProduct.current_price} is {analyzedProduct.signal === "Buy Now" ? "significantly below the recent average. This is a great time to buy!" : analyzedProduct.signal === "Overpriced" ? "higher than usual. We recommend waiting for a drop." : "hovering around its normal average. Wait for a better deal."}
-                    </p>
+                    {aiResponse ? (
+                        <>
+                            <p>
+                                <strong>AI Insight:</strong> {aiResponse}
+                            </p>
+                            {sentimentScore !== null && (
+                                <p className="text-xs text-muted-foreground mt-2">
+                                    Sentiment Score: <span className={sentimentScore > 0 ? "text-green-500 font-semibold" : sentimentScore < 0 ? "text-red-500 font-semibold" : ""}>{sentimentScore}</span>
+                                </p>
+                            )}
+                        </>
+                    ) : (
+                        <p className="animate-pulse">Thinking...</p>
+                    )}
                     {query && (
                       <p className="text-muted-foreground italic mt-2">
                          Query context applied: "{query}"
