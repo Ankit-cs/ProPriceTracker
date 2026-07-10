@@ -9,6 +9,8 @@ ProPriceTracker is an intelligent and automated price tracking application that 
 - 🛒 **Universal Tracking:** Monitor items from Amazon (using ScrapingAnt) and other sites like BestBuy, Zara, Walmart (via Firecrawl).
 - 📊 **Detailed Amazon Metadata:** Extracts and displays star ratings, review counts, popularity scores, choice badges, ASIN numbers, and collapsible features/descriptions.
 - 📈 **Price Trends & Alerts:** Visualize history with interactive charts, toggle price alerts, and receive email notifications on price drops.
+- ⚡ **[NEW] Signalist Trading Desk:** Build "Dream Setups" (Portfolios) with real-time price tracking. Includes technical indicators like Moving Average, Volatility %, Sentiment Scores, and "Buy/Wait" signals for products.
+- 🟢 **[NEW] Real-time Flashes:** UI instantly flashes green or red via Supabase WebSockets the moment a price changes in the backend.
 - 🔒 **Dynamic Auth / Dev Bypass:** Secure Google OAuth integration, with a built-in `BYPASS_AUTH` toggle for frictionless local sandbox testing.
 - 🤖 **Automated Checks:** Daily cron jobs check tracked products and notify users of drop alerts.
 
@@ -50,11 +52,26 @@ sequenceDiagram
     end
 ```
 
+## ⚡ Signalist Trading Desk (`/signalist`)
+
+The **Signalist Trading Desk** is an advanced sub-module designed for users who want to group products into logical tracking portfolios (e.g., "Gaming PC Build", "Smart Home Upgrades") and monitor their aggregate value with algorithmic trading indicators.
+
+### Desk Features:
+- **Dream Setups (Portfolios):** Create unlimited, named portfolios and attach products to them. The card instantly calculates and displays the total aggregated cost of the setup.
+- **Instant Product Syncing:** Add tracked products from a dropdown, or paste a brand-new Amazon URL directly into the setup. The app will automatically scrape it, track it, and wire it into the setup without needing a page refresh.
+- **Optimistic UI:** Products can be removed from portfolios instantly via a hover-action minus button. The UI updates optimistically while the server processes the deletion.
+- **Real-Time Flashes (WebSockets):** Using Supabase Realtime channels, the Trading Desk listens for database-level price updates. The moment a price changes (via a cron job or manual refresh), the `Total Value` of the setup and the individual product cards briefly flash **Green** (for price drops) or **Red** (for price increases) for 3 seconds.
+- **Technical Analysis Indicators:**
+  - **Moving Average (30-day):** Calculates the recent price trend to determine if the current price is a good entry point.
+  - **Volatility Index:** A percentage metric showing how heavily the product's price fluctuates.
+  - **AI Signals:** Automatically labels each product with actionable advice: `Strong Buy`, `Wait`, or `Neutral` based on the delta between the current price and its moving average.
+
 ## Technology Stack
 
 - **Frontend:** Next.js (App Router), React, Tailwind CSS, shadcn/ui, Recharts
 - **Backend:** Next.js Server Actions & API Routes, Supabase (PostgreSQL, pg_cron)
 - **[NEW] Side-by-Side Product Comparison**: Select up to 3 products to compare their prices, ratings, and features simultaneously using a persistent Zustand store.
+- **[NEW] Signalist Trading Desk**: Build custom portfolios and get live AI-driven "Buy/Wait" signals, complete with optimistic instant UI updates for adding/removing items.
 - **[NEW] Deep Discount Dashboard**: A dedicated interface that exclusively surfaces items currently on sale, sorted by the highest discount percentage.
 - **[NEW] Sales Calendar & Savings Predictor**: An interactive tool that calculates potential savings by delaying purchases until major upcoming e-commerce events (e.g., Prime Day, Black Friday).
 - **[NEW] Intelligent "Product Details" Parser**: Automatically scrapes the "Technical Details" section from Amazon into a structured JSON map (Key-Value pairs), stripping out messy HTML and emojis.
