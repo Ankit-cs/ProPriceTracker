@@ -95,9 +95,14 @@ export default async function Home() {
             <h3 className="text-2xl font-bold font-display text-ink">
               Your Tracked Products
             </h3>
-            <span className="text-sm text-ink-muted">
-              {products.length} {products.length === 1 ? "product" : "products"}
-            </span>
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-ink-muted">
+                {products.length} {products.length === 1 ? "product" : "products"}
+              </span>
+              <a href="/api/products/export?format=pdf" className="text-sm font-medium text-accent hover:underline px-3 py-1 bg-surface border border-line rounded-md">
+                Export PDF
+              </a>
+            </div>
           </div>
 
           <div className="grid gap-6 md:grid-cols-2 items-start">

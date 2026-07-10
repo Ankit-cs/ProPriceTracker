@@ -68,7 +68,10 @@ export async function addProduct(formData) {
     // Scrape product data with Amazon Scraper or Firecrawl
     let productData;
     if (isAmazon) {
-      productData = await scrapeAmazonProduct(url);
+      const { data: existingProd } = await supabase.from('products').select('pincode').eq('user_id', user.id).eq('url', url).maybeSingle();
+      const pincode = existingProd?.pincode || undefined;
+
+      productData = await scrapeAmazonProduct(url, "in", pincode);
     } else {
       productData = await scrapeProduct(url);
     }
@@ -360,4 +363,59 @@ export async function toggleAlerts(productId: string, enabled: boolean, targetDi
     console.error("Toggle alerts error:", error);
     return { error: error.message || "Failed to toggle alerts" };
   }
+}
+
+export async function updateProductPincode(productId: string, url: string, pincode: string) {
+  const cookieStore = await cookies();
+  const supabase = BYPASS_AUTH ? getServiceRoleClient() : createClient(cookieStore);
+  
+  let user;
+  if (BYPASS_AUTH) {
+    user = await getMockUser();
+  } else {
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    user = authUser;
+  }
+
+  if (!user) {
+    return { error: "Not authenticated" };
+  }
+
+  // Update DB with the new pincode first
+  await supabase
+    .from("products")
+    .update({ pincode })
+    .eq("id", productId)
+    .eq("user_id", user.id);
+
+  // Re-scrape with new pincode
+  const region = 'in'; // Fixed to India for this app
+  const productData = await scrapeAmazonProduct(url, region, pincode);
+
+  if (!productData.productName || !productData.currentPrice) {
+    return { error: "Could not extract product information from this URL" };
+  }
+
+  const updateData: any = {
+    current_price: productData.currentPrice,
+    updated_at: new Date().toISOString(),
+    is_in_stock: productData.isInStock !== undefined ? productData.isInStock : true,
+    sold_by: productData.soldBy || null,
+    delivery_date: productData.deliveryDate || null,
+  };
+
+  const { data: product, error } = await supabase
+    .from("products")
+    .update(updateData)
+    .eq("id", productId)
+    .eq("user_id", user.id)
+    .select()
+    .single();
+
+  if (error) {
+    return { error: error.message };
+  }
+  
+  revalidatePath("/");
+  return { success: true, product };
 }
