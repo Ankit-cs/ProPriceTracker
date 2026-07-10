@@ -411,16 +411,30 @@ export default function CompareClient({ user }) {
                           {product.title}
                         </h3>
 
-                        {/* Rating */}
-                        {product.rating > 0 && (
-                          <div className="flex items-center gap-1.5 mb-2">
-                            <div className="flex items-center gap-0.5 text-yellow-500">
-                              <Star className="w-3.5 h-3.5 fill-current" />
-                              <span className="text-xs font-bold text-ink-soft">{product.rating}</span>
-                            </div>
-                            <span className="text-[11px] text-ink-muted">
-                              ({product.reviewsCount.toLocaleString()})
-                            </span>
+                        {/* Rating, Reviews, ASIN & Badges */}
+                        {(product.rating > 0 || product.amazonId) && (
+                          <div className="flex items-center gap-1.5 mb-2 flex-wrap">
+                            {product.rating > 0 && (
+                              <>
+                                <div className="flex items-center gap-0.5 text-yellow-500">
+                                  <Star className="w-3.5 h-3.5 fill-current" />
+                                  <span className="text-xs font-bold text-ink-soft">{product.rating}</span>
+                                </div>
+                                <span className="text-[11px] text-ink-muted">
+                                  ({product.reviewsCount.toLocaleString()})
+                                </span>
+                                {product.reviewsCount > 0 && (
+                                  <span className="text-[10px] bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded border border-amber-200/50 font-medium">
+                                    Score: {parseFloat((product.rating * product.reviewsCount).toFixed(1)).toLocaleString()}
+                                  </span>
+                                )}
+                              </>
+                            )}
+                            {product.amazonId && (
+                              <span className="text-[9px] bg-neutral-100 text-neutral-600 px-1.5 py-0.5 rounded border border-neutral-200 font-mono uppercase">
+                                ASIN: {product.amazonId}
+                              </span>
+                            )}
                             {product.isAmazonChoice && (
                               <Badge variant="default" className="bg-indigo-900 text-[10px] text-white px-2 py-0.5 rounded border-none leading-none">
                                 Choice
