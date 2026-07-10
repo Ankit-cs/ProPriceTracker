@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRealtimePrice } from "@/hooks/useRealtimePrice";
 import { deleteProduct } from "@/app/actions";
 import PriceChart from "./PriceChart";
 import {
@@ -18,6 +19,8 @@ import {
   ChevronDown,
   ChevronUp,
   Star,
+  TrendingUp,
+  Activity
 } from "lucide-react";
 import Link from "next/link";
 
@@ -43,6 +46,15 @@ export default function ProductCard({ product }) {
   const [showChart, setShowChart] = useState(false);
   const [showFeatures, setShowFeatures] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [stats, setStats] = useState({ signal: 'Neutral', sentiment: { score: 0, label: 'Neutral' } });
+  
+  const { livePrice, flashColor } = useRealtimePrice(product.id, product.current_price);
+
+  useEffect(() => {
+    import("@/app/signalist/actions").then((mod) => {
+      mod.getSignalistStats(product.id, product.full_description || product.short_description || "").then(setStats);
+    });
+  }, [product.id, product.full_description, product.short_description]);
 
   const renderDescription = (desc: string | any) => {
     if (!desc) return null;
@@ -127,30 +139,63 @@ export default function ProductCard({ product }) {
                     Choice
                   </Badge>
                 )}
+                
+                {stats.signal === 'Strong Buy' && (
+                  <Badge className="bg-green-500/10 text-green-500 hover:bg-green-500/20 text-[10px] px-2 py-0.5 rounded border border-green-500/20 h-fit gap-1">
+                    <TrendingUp className="w-3 h-3" />
+                    Strong Buy
+                  </Badge>
+                )}
+                {stats.signal === 'Wait' && (
+                  <Badge className="bg-red-500/10 text-red-500 hover:bg-red-500/20 text-[10px] px-2 py-0.5 rounded border border-red-500/20 h-fit gap-1">
+                    <TrendingDown className="w-3 h-3" />
+                    Wait
+                  </Badge>
+                )}
+                {stats.sentiment.label !== 'Neutral' && (
+                  <Badge className={`text-[10px] px-2 py-0.5 rounded h-fit gap-1 ${stats.sentiment.label === 'Bullish' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'} border`}>
+                    <Activity className="w-3 h-3" />
+                    {stats.sentiment.label}
+                  </Badge>
+                )}
               </div>
             )}
 
             <div className="flex flex-col gap-1.5">
               <div className="flex items-baseline gap-2 flex-wrap">
-                <span className="text-2xl font-bold text-foreground">
-                  {formatPrice(product.current_price, product.currency)}
-                </span>
-                
-                {product.original_price > product.current_price && (
-                  <span className="text-sm text-ink-muted line-through font-normal">
-                    {formatPrice(product.original_price, product.currency)}
-                  </span>
-                )}
+                {product.is_in_stock === false ? (
+                  <Badge variant="destructive" className="font-semibold text-sm">
+                    Out of Stock
+                  </Badge>
+                ) : (
+                  <>
+                    <span 
+                      className={`text-2xl font-bold transition-colors duration-300 ${
+                        flashColor === 'green' ? 'text-green-500 bg-green-500/10 px-1 rounded' 
+                        : flashColor === 'red' ? 'text-red-500 bg-red-500/10 px-1 rounded' 
+                        : 'text-foreground'
+                      }`}
+                    >
+                      {formatPrice(livePrice, product.currency)}
+                    </span>
+                    
+                    {product.original_price > livePrice && (
+                      <span className="text-sm text-ink-muted line-through font-normal">
+                        {formatPrice(product.original_price, product.currency)}
+                      </span>
+                    )}
 
-                <Badge variant="secondary" className="gap-1 bg-green-100 text-green-700 hover:bg-green-100 border-none font-medium text-xs py-0.5">
-                  <TrendingDown className="w-3 h-3" />
-                  Tracking
-                </Badge>
+                    <Badge variant="secondary" className="gap-1 bg-green-100 text-green-700 hover:bg-green-100 border-none font-medium text-xs py-0.5">
+                      <TrendingDown className="w-3 h-3" />
+                      Tracking
+                    </Badge>
+                  </>
+                )}
               </div>
 
-              {product.original_price > product.current_price && (
+              {product.original_price > livePrice && (
                 <div className="text-xs text-green-600 font-semibold flex items-center gap-1">
-                  Save {formatPrice(product.original_price - product.current_price, product.currency)} ({Math.round(((product.original_price - product.current_price) / product.original_price) * 100)}% off)
+                  Save {formatPrice(product.original_price - livePrice, product.currency)} ({Math.round(((product.original_price - livePrice) / product.original_price) * 100)}% off)
                 </div>
               )}
             </div>
