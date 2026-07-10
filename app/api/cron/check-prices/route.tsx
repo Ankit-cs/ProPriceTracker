@@ -142,6 +142,21 @@ export async function POST(request) {
     for (const [userId, alerts] of Object.entries(userAlerts)) {
        try {
            const { data: { user } } = await supabase.auth.admin.getUserById(userId);
+           
+           // Webhook Notification
+           const { data: userSettings } = await supabase.from('user_settings').select('webhook_url').eq('user_id', userId).single();
+           if (userSettings?.webhook_url) {
+             try {
+               await fetch(userSettings.webhook_url, {
+                 method: 'POST',
+                 headers: { 'Content-Type': 'application/json' },
+                 body: JSON.stringify({ event: 'price_drop', alerts })
+               });
+             } catch (err) {
+               console.error("Failed to send webhook for user", userId, err);
+             }
+           }
+
            if (user?.email) {
              const emailResult = await sendConsolidatedPriceDropAlert(user.email, alerts);
              if (emailResult.success) {
@@ -157,6 +172,21 @@ export async function POST(request) {
     for (const [userId, alerts] of Object.entries(userBackInStockAlerts)) {
        try {
            const { data: { user } } = await supabase.auth.admin.getUserById(userId);
+           
+           // Webhook Notification
+           const { data: userSettings } = await supabase.from('user_settings').select('webhook_url').eq('user_id', userId).single();
+           if (userSettings?.webhook_url) {
+             try {
+               await fetch(userSettings.webhook_url, {
+                 method: 'POST',
+                 headers: { 'Content-Type': 'application/json' },
+                 body: JSON.stringify({ event: 'back_in_stock', alerts })
+               });
+             } catch (err) {
+               console.error("Failed to send webhook for user", userId, err);
+             }
+           }
+
            if (user?.email) {
              const { sendBackInStockAlert } = await import("@/lib/email");
              for (const p of alerts) {
