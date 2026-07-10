@@ -11,6 +11,8 @@ ProPriceTracker is an intelligent and automated price tracking application that 
 - 📈 **Price Trends & Alerts:** Visualize history with interactive charts, toggle price alerts, and receive email notifications on price drops.
 - ⚡ **[NEW] Signalist Trading Desk:** Build "Dream Setups" (Portfolios) with real-time price tracking. Includes technical indicators like Moving Average, Volatility %, Sentiment Scores, and "Buy/Wait" signals for products.
 - 🟢 **[NEW] Real-time Flashes:** UI instantly flashes green or red via Supabase WebSockets the moment a price changes in the backend.
+- 🧠 **[NEW] Serverless AI Assistant:** A built-in AI chat that uses natural language processing (`sentiment` package) to analyze your questions, combining your emotional tone with historical price averages to give personalized "Buy Now" or "Wait" signals. Pure TypeScript, no Python backend required!
+- 🖼️ **[NEW] Hero Carousel:** Beautiful interactive product showcase on the landing page.
 - 🔒 **Dynamic Auth / Dev Bypass:** Secure Google OAuth integration, with a built-in `BYPASS_AUTH` toggle for frictionless local sandbox testing.
 - 🤖 **Automated Checks:** Daily cron jobs check tracked products and notify users of drop alerts.
 
@@ -157,4 +159,4 @@ If you have products already tracked in your database that lack rating, review, 
 4. The API will perform clean canonical scraping on all your existing rows and save their reviews, ratings, descriptions, and original prices back to the database.
 
 ## License
-This project is licensed under the MIT License.
+This project is licensed under the **MIT License**. Anyone is completely free to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the software. Feel free to use this code for personal or commercial projects!
