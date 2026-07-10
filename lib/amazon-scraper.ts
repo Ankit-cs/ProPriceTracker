@@ -1,6 +1,7 @@
 import * as cheerio from "cheerio";
 import promiseRetry from "promise-retry";
 import ScrapingAntClient from "@scrapingant/scrapingant-client";
+import axios from "axios";
 
 export interface ScrapedProduct {
   productName: string;
@@ -16,6 +17,7 @@ export interface ScrapedProduct {
   isAmazonChoice?: boolean;
   shortDescription?: string;
   fullDescription?: string;
+  isInStock?: boolean;
 }
 
 function cleanPriceString(priceText: string): string {
@@ -224,6 +226,10 @@ export function parseAmazonHtml(cleanHtml: string, url: string): ScrapedProduct 
         let currency = extractCurrency($(".a-price-symbol")) || 
                        (url.includes("amazon.in") ? "₹" : "$");
 
+        const isOutOfStock = $("#availability span").first().text().trim().toLowerCase().includes("currently unavailable") ||
+                             $("#availability span").first().text().trim().toLowerCase().includes("out of stock");
+        const isInStock = !isOutOfStock;
+
         if (!title || !finalPrice) {
           throw new Error("Missing price or title, possibly blocked by CAPTCHA");
         }
@@ -241,7 +247,8 @@ export function parseAmazonHtml(cleanHtml: string, url: string): ScrapedProduct 
     reviewsCount,
     isAmazonChoice,
     shortDescription,
-    fullDescription
+    fullDescription,
+    isInStock
   };
 }
 
@@ -265,6 +272,22 @@ async function scrapeWithScrapingAnt(url: string, countryCode: string): Promise<
     },
     { retries: 1, factor: 2, minTimeout: 2000 }
   );
+}
+
+async function scrapeWithAxios(url: string): Promise<ScrapedProduct> {
+  try {
+    const response = await axios.get(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5',
+      }
+    });
+    return parseAmazonHtml(response.data, url);
+  } catch (error: any) {
+    console.error(`[AxiosFallback] Failed:`, error.message);
+    throw error;
+  }
 }
 
 export async function resolveShortUrl(url: string): Promise<string> {
@@ -303,7 +326,12 @@ export async function scrapeAmazonProduct(url: string): Promise<ScrapedProduct> 
     countryCode = "ca";
   }
 
-  return await scrapeWithScrapingAnt(finalUrl, countryCode);
+  try {
+    return await scrapeWithScrapingAnt(finalUrl, countryCode);
+  } catch (error) {
+    console.error("ScrapingAnt failed, trying axios fallback...");
+    return await scrapeWithAxios(finalUrl);
+  }
 }
 
 export function cleanAmazonUrl(url: string): string {
