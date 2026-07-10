@@ -3,24 +3,63 @@
 import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 import { scrapeProduct } from "@/lib/firecrawl";
-import { scrapeAmazonProduct } from "@/lib/amazon-scraper";
+import { scrapeAmazonProduct, cleanAmazonUrl } from "@/lib/amazon-scraper";
 import { searchAmazonProducts } from "@/lib/amazon-search-scraper";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+
+const BYPASS_AUTH = false; // Bypass authentication for local testing
+
+const getServiceRoleClient = () => {
+  return createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+};
+
+export async function getMockUser() {
+  try {
+    const supabase = getServiceRoleClient();
+    const { data: { users } } = await supabase.auth.admin.listUsers();
+    if (users && users.length > 0) {
+      return { id: users[0].id, email: users[0].email };
+    }
+    const { data: products } = await supabase.from("products").select("user_id").limit(1);
+    if (products && products.length > 0) {
+      return { id: products[0].user_id, email: "test@example.com" };
+    }
+  } catch (e) {
+    console.error("Mock user helper error:", e);
+  }
+  return null;
+}
+
+export async function isBypassAuthEnabled() {
+  return BYPASS_AUTH;
+}
 
 export async function addProduct(formData) {
-  const url = formData.get("url");
+  const rawUrl = formData.get("url");
 
-  if (!url) {
+  if (!rawUrl) {
     return { error: "URL is required" };
   }
 
+  const isAmazon = rawUrl.includes("amazon.") || rawUrl.includes("amzn.");
+  const url = isAmazon ? cleanAmazonUrl(rawUrl) : rawUrl;
+
   try {
     const cookieStore = await cookies();
-    const supabase = createClient(cookieStore);
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const supabase = BYPASS_AUTH ? getServiceRoleClient() : createClient(cookieStore);
+    
+    let user;
+    if (BYPASS_AUTH) {
+      user = await getMockUser();
+    } else {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      user = authUser;
+    }
 
     if (!user) {
       return { error: "Not authenticated" };
@@ -28,7 +67,7 @@ export async function addProduct(formData) {
 
     // Scrape product data with Amazon Scraper or Firecrawl
     let productData;
-    if (url.includes("amazon.")) {
+    if (isAmazon) {
       productData = await scrapeAmazonProduct(url);
     } else {
       productData = await scrapeProduct(url);
@@ -109,10 +148,46 @@ export async function addProduct(formData) {
   }
 }
 
+export async function addMultipleProducts(formData: FormData) {
+  const rawUrlsString = formData.get("urls") as string;
+  if (!rawUrlsString) return { error: "URLs are required" };
+
+  const rawUrls = rawUrlsString.split(/[\n,]+/).map(u => u.trim()).filter(Boolean);
+  
+  if (rawUrls.length === 0) return { error: "No valid URLs found" };
+  
+  const results = [];
+  for (let i = 0; i < rawUrls.length; i++) {
+     const rawUrl = rawUrls[i];
+     const singleFormData = new FormData();
+     singleFormData.append("url", rawUrl);
+     const result = await addProduct(singleFormData);
+     results.push(result);
+     
+     // Add a delay between products to prevent hitting the ScrapingAnt free tier concurrency limit
+     if (i < rawUrls.length - 1) {
+       await new Promise(r => setTimeout(r, 3000));
+     }
+  }
+  
+  const successes = results.filter(r => r.success).length;
+  const fails = results.length - successes;
+  
+  if (successes === 0) {
+    // If all failed, return the error of the first one
+    return { error: results[0]?.error || "Failed to add products. Please check the URLs and try again." };
+  }
+
+  return { 
+     success: successes > 0, 
+     message: `Successfully added ${successes} products. ${fails > 0 ? `Failed ${fails}.` : ''}` 
+  };
+}
+
 export async function deleteProduct(productId) {
   try {
     const cookieStore = await cookies();
-    const supabase = createClient(cookieStore);
+    const supabase = BYPASS_AUTH ? getServiceRoleClient() : createClient(cookieStore);
     const { error } = await supabase
       .from("products")
       .delete()
@@ -130,7 +205,7 @@ export async function deleteProduct(productId) {
 export async function getProducts() {
   try {
     const cookieStore = await cookies();
-    const supabase = createClient(cookieStore);
+    const supabase = BYPASS_AUTH ? getServiceRoleClient() : createClient(cookieStore);
     const { data, error } = await supabase
       .from("products")
       .select("*")
@@ -147,7 +222,7 @@ export async function getProducts() {
 export async function getPriceHistory(productId) {
   try {
     const cookieStore = await cookies();
-    const supabase = createClient(cookieStore);
+    const supabase = BYPASS_AUTH ? getServiceRoleClient() : createClient(cookieStore);
     const { data, error } = await supabase
       .from("price_history")
       .select("*")
@@ -165,8 +240,15 @@ export async function getPriceHistory(productId) {
 export async function testPriceDropEmail(productId) {
   try {
     const cookieStore = await cookies();
-    const supabase = createClient(cookieStore);
-    const { data: { user } } = await supabase.auth.getUser();
+    const supabase = BYPASS_AUTH ? getServiceRoleClient() : createClient(cookieStore);
+    
+    let user;
+    if (BYPASS_AUTH) {
+      user = await getMockUser();
+    } else {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      user = authUser;
+    }
 
     if (!user || !user.email) {
       return { error: "User not authenticated or email missing" };
@@ -185,19 +267,25 @@ export async function testPriceDropEmail(productId) {
     // Simulate a 10% price drop
     const oldPrice = parseFloat(product.current_price) * 1.1;
     const newPrice = parseFloat(product.current_price);
+    const priceDrop = oldPrice - newPrice;
+    const percentageDrop = "10.00";
     
-    const { sendPriceDropAlert } = await import("@/lib/email");
+    const { sendConsolidatedPriceDropAlert } = await import("@/lib/email");
     
-    const result = await sendPriceDropAlert(
+    const result = await sendConsolidatedPriceDropAlert(
       user.email,
-      product,
-      oldPrice,
-      newPrice
+      [{
+        product,
+        oldPrice,
+        newPrice,
+        priceDrop,
+        percentageDrop
+      }]
     );
 
     if (result.error) throw new Error(result.error);
     return { success: true };
-  } catch (error) {
+  } catch (error: any) {
     console.error("Test email error:", error);
     return { error: error.message || "Failed to send test email" };
   }
@@ -214,8 +302,15 @@ export async function signOut() {
 export async function searchAmazon(keyword: string, limit = 10) {
   try {
     const cookieStore = await cookies();
-    const supabase = createClient(cookieStore);
-    const { data: { user } } = await supabase.auth.getUser();
+    const supabase = BYPASS_AUTH ? getServiceRoleClient() : createClient(cookieStore);
+    
+    let user;
+    if (BYPASS_AUTH) {
+      user = await getMockUser();
+    } else {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      user = authUser;
+    }
 
     if (!user) {
       return { error: "Not authenticated" };
@@ -229,3 +324,35 @@ export async function searchAmazon(keyword: string, limit = 10) {
   }
 }
 
+export async function toggleAlerts(productId: string, enabled: boolean, targetDiscountPercent: number = 0) {
+  try {
+    const cookieStore = await cookies();
+    const supabase = BYPASS_AUTH ? getServiceRoleClient() : createClient(cookieStore);
+    
+    let user;
+    if (BYPASS_AUTH) {
+      user = await getMockUser();
+    } else {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      user = authUser;
+    }
+
+    if (!user) {
+      return { error: "Not authenticated" };
+    }
+
+    const { error } = await supabase
+      .from("products")
+      .update({ alerts_enabled: enabled, target_discount_percent: targetDiscountPercent })
+      .eq("id", productId)
+      .eq("user_id", user.id);
+
+    if (error) throw error;
+
+    revalidatePath("/");
+    return { success: true, alertsEnabled: enabled };
+  } catch (error: any) {
+    console.error("Toggle alerts error:", error);
+    return { error: error.message || "Failed to toggle alerts" };
+  }
+}
