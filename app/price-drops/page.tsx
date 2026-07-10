@@ -2,6 +2,7 @@ import { createClient } from "@/utils/supabase/server";
 import { cookies } from "next/headers";
 import { getProducts, getMockUser } from "@/app/actions";
 import ProductCard from "@/components/ProductCard";
+import SimilarProducts from "@/components/SimilarProducts";
 import { TrendingDown, Filter } from "lucide-react";
 
 export default async function PriceDropsPage() {
@@ -61,6 +62,15 @@ export default async function PriceDropsPage() {
             <p className="text-ink-soft max-w-sm mx-auto">None of your tracked products are currently on sale. We will email you the moment prices drop!</p>
           </div>
         )}
+
+        {/* Global Alternative Deals Section */}
+        <div className="mt-16 max-w-3xl mx-auto">
+          <div className="bg-surface rounded-2xl border border-line p-6 shadow-md">
+            <h3 className="text-lg font-bold font-display text-ink mb-1">🔥 Top Trending Deals</h3>
+            <p className="text-xs text-ink-soft mb-4">Discover discounted alternative products tracked globally by the Buy Karle community.</p>
+            <SimilarProducts excludeProductId="" currency="₹" />
+          </div>
+        </div>
       </div>
     </main>
   );
