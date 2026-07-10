@@ -1,6 +1,6 @@
 # ProPriceTracker - Advanced E-Commerce Price Monitor
 
-**Live Demo:** [https://khareedley.vercel.app](https://buykarley.vercel.app)
+**Live Demo:** [https://buykarley.vercel.app](https://buykarley.vercel.app)
 
 ProPriceTracker is an intelligent and automated price tracking application that allows users to monitor product prices across various e-commerce platforms. Built with a modern Next.js stack, it uses Firecrawl for structured scraping, Supabase for scalable backend operations, and Resend for transactional email alerts.
 
