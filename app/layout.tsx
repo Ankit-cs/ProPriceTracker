@@ -10,12 +10,22 @@ export const metadata = {
     "Track product prices across e-commerce sites and get alerts on price drops",
 };
 
+import { getMockUser, isBypassAuthEnabled } from "@/app/actions";
+
 export default async function RootLayout({ children }) {
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+
+  const bypass = await isBypassAuthEnabled();
+  let user;
+  if (bypass) {
+    user = await getMockUser();
+  } else {
+    const {
+      data: { user: authUser },
+    } = await supabase.auth.getUser();
+    user = authUser;
+  }
 
   return (
     <html lang="en">
