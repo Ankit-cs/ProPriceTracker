@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { addProduct } from "@/app/actions";
+import { addMultipleProducts } from "@/app/actions";
 import AuthModal from "./AuthModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,9 +24,9 @@ export default function AddProductForm({ user }) {
     setLoading(true);
 
     const formData = new FormData();
-    formData.append("url", url);
+    formData.append("urls", url);
 
-    const result = await addProduct(formData);
+    const result = await addMultipleProducts(formData);
 
     if (result.error) {
       toast.error(result.error);
@@ -41,13 +41,12 @@ export default function AddProductForm({ user }) {
   return (
     <>
       <form onSubmit={handleSubmit} className="w-full max-w-2xl mx-auto">
-        <div className="flex flex-col sm:flex-row gap-3">
-          <Input
-            type="url"
+        <div className="flex flex-col gap-3">
+          <textarea
             value={url}
             onChange={(e) => setUrl(e.target.value)}
-            placeholder="Paste product URL (Amazon, Walmart, etc.)"
-            className="h-12 text-base rounded-full px-5 bg-white/70 border-line text-ink placeholder:text-ink-muted focus-visible:ring-accent"
+            placeholder="Paste product URLs (separate multiple URLs with commas or new lines)"
+            className="w-full min-h-[80px] p-4 text-base rounded-2xl bg-white/70 border border-line text-ink placeholder:text-ink-muted focus-visible:ring-accent focus:outline-none focus:ring-2"
             required
             disabled={loading}
           />
@@ -55,15 +54,15 @@ export default function AddProductForm({ user }) {
           <button
             type="submit"
             disabled={loading}
-            className="bg-ink hover:bg-ink/90 text-background h-12 px-8 rounded-full font-medium transition-colors inline-flex items-center justify-center cursor-pointer shrink-0"
+            className="bg-ink hover:bg-ink/90 text-background h-12 px-8 rounded-full font-medium transition-colors inline-flex items-center justify-center cursor-pointer shrink-0 self-end"
           >
             {loading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Adding...
+                Processing...
               </>
             ) : (
-              "Track Price"
+              "Track Price(s)"
             )}
           </button>
         </div>
