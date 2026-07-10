@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useRealtimePrice } from "@/hooks/useRealtimePrice";
-import { deleteProduct } from "@/app/actions";
+import { deleteProduct, updateProductPincode } from "@/app/actions";
+import { toast } from "sonner";
 import PriceChart from "./PriceChart";
 import {
   Card,
@@ -12,6 +13,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import {
   ExternalLink,
   Trash2,
@@ -20,7 +22,12 @@ import {
   ChevronUp,
   Star,
   TrendingUp,
-  Activity
+  Activity,
+  MapPin,
+  Truck,
+  Store,
+  Loader2,
+  ArrowRight
 } from "lucide-react";
 import Link from "next/link";
 
@@ -45,6 +52,8 @@ const formatPrice = (price: number | string | undefined, currencyCode: string) =
 export default function ProductCard({ product }) {
   const [showChart, setShowChart] = useState(false);
   const [showFeatures, setShowFeatures] = useState(false);
+  const [pincode, setPincode] = useState(product.pincode || "");
+  const [updatingPincode, setUpdatingPincode] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [stats, setStats] = useState({ signal: 'Neutral', sentiment: { score: 0, label: 'Neutral' } });
   
@@ -83,6 +92,21 @@ export default function ProductCard({ product }) {
     
     // Normal string rendering
     return <div className="whitespace-pre-wrap">{String(content).replace(/\\n/g, '\n')}</div>;
+  };
+
+  const handleUpdatePincode = async () => {
+    if (!pincode) {
+      toast.error("Please enter a pincode");
+      return;
+    }
+    setUpdatingPincode(true);
+    const result = await updateProductPincode(product.id, product.url, pincode);
+    setUpdatingPincode(false);
+    if (result.error) {
+      toast.error(result.error);
+    } else {
+      toast.success("Delivery details updated successfully!");
+    }
   };
 
   const handleDelete = async () => {
@@ -287,8 +311,58 @@ export default function ProductCard({ product }) {
       </CardContent>
 
       {showChart && (
-        <CardFooter className="pt-0">
+        <CardFooter className="pt-0 flex flex-col items-stretch gap-4">
           <PriceChart productId={product.id} initialAlertsEnabled={product.alerts_enabled} initialTargetDiscount={product.target_discount_percent} />
+          
+          <div className="bg-surface-2 rounded-xl p-4 mt-2 border border-line">
+            <h4 className="font-semibold text-sm text-ink mb-3 flex items-center gap-1.5">
+              <Truck className="w-4 h-4 text-accent" />
+              Delivery & Seller Details
+            </h4>
+            
+            <div className="flex gap-2 mb-4">
+              <div className="relative flex-1">
+                <MapPin className="absolute left-2.5 top-2.5 w-4 h-4 text-ink-muted" />
+                <input 
+                  type="text" 
+                  placeholder="Enter Pincode" 
+                  value={pincode}
+                  onChange={(e) => setPincode(e.target.value)}
+                  className="w-full bg-background border border-line rounded-lg pl-9 pr-3 py-1.5 text-sm focus:outline-none focus:border-accent"
+                />
+              </div>
+              <Button size="sm" onClick={handleUpdatePincode} disabled={updatingPincode} className="gap-1 bg-ink text-background hover:bg-ink/90">
+                {updatingPincode ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
+                Fetch
+              </Button>
+            </div>
+            
+            <div className="space-y-2 text-sm text-ink-soft bg-background/50 p-3 rounded-lg border border-line/50">
+              <div className="flex items-start gap-2">
+                <Truck className="w-4 h-4 mt-0.5 text-ink-muted shrink-0" />
+                <div>
+                  <span className="font-medium text-ink">Delivery:</span>{" "}
+                  {product.delivery_date ? (
+                    <span>{product.delivery_date}</span>
+                  ) : (
+                    <span className="text-ink-muted italic">Not fetched yet</span>
+                  )}
+                </div>
+              </div>
+              
+              <div className="flex items-start gap-2">
+                <Store className="w-4 h-4 mt-0.5 text-ink-muted shrink-0" />
+                <div>
+                  <span className="font-medium text-ink">Sold By:</span>{" "}
+                  {product.sold_by ? (
+                    <span>{product.sold_by}</span>
+                  ) : (
+                    <span className="text-ink-muted italic">Not fetched yet</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
         </CardFooter>
       )}
     </Card>
