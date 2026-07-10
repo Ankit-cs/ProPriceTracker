@@ -2,6 +2,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { createClient } from "@/utils/supabase/server";
 import { cookies } from "next/headers";
 import Header from "@/components/Header";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 export const metadata = {
@@ -34,6 +35,7 @@ export default async function RootLayout({ children }) {
         {children}
 
         <Toaster richColors />
+        <Analytics />
       </body>
     </html>
   );
