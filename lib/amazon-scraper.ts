@@ -58,7 +58,7 @@ function cleanPriceString(priceText: string): string {
 // Simple helpers to clean up prices
 function extractPrice(...elements: any[]) {
   for (const element of elements) {
-    const priceText = element.text().trim();
+    const priceText = element.first().text().trim();
     if (priceText) {
       const cleanPrice = cleanPriceString(priceText);
       if (cleanPrice && !isNaN(Number(cleanPrice))) return cleanPrice;
@@ -68,37 +68,18 @@ function extractPrice(...elements: any[]) {
 }
 
 function extractCurrency(element: any) {
-  const currencyText = element.text().trim().slice(0, 1);
+  const currencyText = element.first().text().trim().slice(0, 1);
   return currencyText ? currencyText : "";
 }
 
-export async function scrapeAmazonProduct(url: string): Promise<ScrapedProduct> {
-  if (!url) throw new Error("No URL provided");
 
-  const apiKey = process.env.SCRAPINGANT_API_KEY;
-  if (!apiKey) throw new Error("SCRAPINGANT_API_KEY is not defined in environment variables");
-
-  const client = new ScrapingAntClient({ apiKey });
-
-  // Set proxy country to India only
-  const countryCode = "in";
-
-  // Implement the robust retry logic found in amazon_scraper
-  return promiseRetry(
-    async (retry, attempt) => {
-      try {
-        console.log(`[Amazon Scraper] Attempt ${attempt} for ${url} (Country: ${countryCode})`);
         
-        // Let ScrapingAnt handle headless rendering, captchas, and proxies
-        const response = await client.scrape(url, { proxy_country: countryCode });
-        
-        // Clean the DOM aggressively like amazon_scraper does
-        const cleanHtml = response.content.replace(/\s\s+/g, "").replace(/\n/g, "");
-        const $ = cheerio.load(cleanHtml);
+export function parseAmazonHtml(cleanHtml: string, url: string): ScrapedProduct {
+  const $ = cheerio.load(cleanHtml);
 
-        const title = $("#productTitle").text().trim() || 
-                      $("#title").text().trim() || 
-                      $(".a-size-large.product-title-word-break").text().trim() || "";
+        const title = $("#productTitle").first().text().trim() || 
+                      $("#title").first().text().trim() || 
+                      $(".a-size-large.product-title-word-break").first().text().trim() || "";
         const currentPriceStr = extractPrice(
           $("#corePriceDisplay_desktop_feature_div .a-price span.a-offscreen"),
           $("#corePrice_desktop .a-price span.a-offscreen"),
@@ -127,15 +108,15 @@ export async function scrapeAmazonProduct(url: string): Promise<ScrapedProduct> 
         const isDiscounted = originalPrice > finalPrice && finalPrice > 0;
         const savings = isDiscounted ? (originalPrice - finalPrice) : 0;
 
-        const amazonId = $("#ASIN").val() as string || url.match(/\/dp\/([A-Z0-9]{10})/)?.[1] || "";
+        const amazonId = $("#ASIN").first().val() as string || url.match(/\/dp\/([A-Z0-9]{10})/)?.[1] || "";
         
         let rating = 0;
         let reviewsCount = 0;
         
-        const ratingText = $("#acrPopover").attr("title") || 
-                           $("[data-hook='rating-out-of-five']").text().trim() || 
-                           $("i.a-icon-star span.a-icon-alt").text().trim() || 
-                           $(".a-icon-star-small .a-icon-alt").text().trim();
+        const ratingText = $("#acrPopover").first().attr("title") || 
+                           $("[data-hook='rating-out-of-five']").first().text().trim() || 
+                           $("i.a-icon-star span.a-icon-alt").first().text().trim() || 
+                           $(".a-icon-star-small .a-icon-alt").first().text().trim();
         if (ratingText) {
           const match = ratingText.match(/(\d+\.?\d*)\s*(out of|von|sur|de)/i);
           if (match) {
@@ -146,9 +127,9 @@ export async function scrapeAmazonProduct(url: string): Promise<ScrapedProduct> 
           }
         }
 
-        const reviewsText = $("#acrCustomerReviewText").text().trim() || 
-                            $("#acrCustomerReviewLink").text().trim() ||
-                            $("[data-hook='total-review-count']").text().trim();
+        const reviewsText = $("#acrCustomerReviewText").first().text().trim() || 
+                            $("#acrCustomerReviewLink").first().text().trim() ||
+                            $("[data-hook='total-review-count']").first().text().trim();
         if (reviewsText) {
           const cleanReviews = reviewsText.replace(/[^\d]/g, "");
           if (cleanReviews) {
@@ -160,11 +141,66 @@ export async function scrapeAmazonProduct(url: string): Promise<ScrapedProduct> 
                                $(".ac-badge-wrapper").length > 0 ||
                                $(".ac-badge-text").length > 0;
 
-        const shortDescription = $("#featurebullets_feature_div").text().trim().replace(/\s+/g, ' ') || 
-                                 $("#feature-bullets").text().trim().replace(/\s+/g, ' ') || "";
-        const fullDescription = $("#productDescription").text().trim().replace(/\s+/g, ' ') || 
-                                 $("#aplus").text().trim().replace(/\s+/g, ' ') || "";
+        // Remove inline scripts and styles so they don't pollute the text extraction
+        $("script, style").remove();
 
+        // Extract feature bullets (Short description)
+        let shortDescription = "";
+        const shortDescElem = $("#featurebullets_feature_div").length > 0 ? $("#featurebullets_feature_div") : $("#feature-bullets");
+        const liItems = shortDescElem.find("li span.a-list-item");
+        
+        if (liItems.length > 0) {
+           const items: string[] = [];
+           liItems.each((_, el) => {
+              // Strip checkmarks, emojis, and weird bullet points
+              let text = $(el).text().trim().replace(/\s+/g, ' ');
+              text = text.replace(/[\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF]/g, '');
+              text = text.replace(/[✔✓•*]/g, '').trim();
+
+              if (text && !text.toLowerCase().includes("make sure this fits")) {
+                items.push(text);
+              }
+           });
+           shortDescription = items.length > 0 ? JSON.stringify(items) : "";
+        } else {
+           let text = shortDescElem.first().text().trim().replace(/\s+/g, ' ');
+           text = text.replace(/[\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF]/g, '');
+           text = text.replace(/[✔✓•*]/g, '').trim();
+           shortDescription = text || "";
+        }
+
+        // Extract Technical Details / Product Specifications as Key-Value Pairs
+        const productDetails: Record<string, string> = {};
+
+        // 1. Try to parse Technical Details Table (Common for electronics)
+        $("table.prodDetTable tr").each((_, tr) => {
+           const key = $(tr).find("th").text().trim().replace(/\s+/g, ' ').replace(/\u200e/g, '');
+           const value = $(tr).find("td").text().trim().replace(/\s+/g, ' ').replace(/\u200e/g, '');
+           if (key && value) {
+              productDetails[key] = value;
+           }
+        });
+
+        // 2. Try to parse Product Details Bullets (Common for other categories)
+        $("#detailBullets_feature_div ul li").each((_, li) => {
+           const textParts = $(li).find("span.a-list-item > span");
+           if (textParts.length >= 2) {
+              const key = $(textParts[0]).text().replace(':', '').trim().replace(/\u200e/g, '');
+              const value = $(textParts[1]).text().trim().replace(/\u200e/g, '');
+              if (key && value) {
+                 productDetails[key] = value;
+              }
+           }
+        });
+
+        // Convert the extracted Key-Value pairs into a JSON string for fullDescription
+        let fullDescription = "";
+        if (Object.keys(productDetails).length > 0) {
+            fullDescription = JSON.stringify(productDetails);
+        } else {
+            // Fallback if no tables exist
+            fullDescription = $("#productDescription").first().text().trim().replace(/\s+/g, ' ') || "";
+        }
         const images =
           $("#imgBlkFront").attr("data-a-dynamic-image") ||
           $("#landingImage").attr("data-a-dynamic-image") ||
@@ -192,26 +228,102 @@ export async function scrapeAmazonProduct(url: string): Promise<ScrapedProduct> 
           throw new Error("Missing price or title, possibly blocked by CAPTCHA");
         }
 
-        return {
-          productName: title,
-          currentPrice: finalPrice,
-          currency: currency,
-          productImageUrl: highResImage || thumbnail,
-          originalPrice: originalPrice,
-          isDiscounted,
-          savings,
-          amazonId,
-          rating,
-          reviewsCount,
-          isAmazonChoice,
-          shortDescription,
-          fullDescription
-        };
+  return {
+    productName: title,
+    currentPrice: finalPrice,
+    currency: currency,
+    productImageUrl: highResImage || thumbnail,
+    originalPrice: originalPrice,
+    isDiscounted,
+    savings,
+    amazonId,
+    rating,
+    reviewsCount,
+    isAmazonChoice,
+    shortDescription,
+    fullDescription
+  };
+}
+
+async function scrapeWithScrapingAnt(url: string, countryCode: string): Promise<ScrapedProduct> {
+  const apiKey = process.env.SCRAPINGANT_API_KEY;
+  if (!apiKey) throw new Error("SCRAPINGANT_API_KEY is not defined in environment variables");
+
+  const client = new ScrapingAntClient({ apiKey });
+
+  return promiseRetry(
+    async (retry, attempt) => {
+      try {
+        console.log(`[ScrapingAnt] Attempt ${attempt} for ${url} (Country: ${countryCode})`);
+        const response = await client.scrape(url, { proxy_country: countryCode });
+        const cleanHtml = response.content.replace(/\s\s+/g, "").replace(/\n/g, "");
+        return parseAmazonHtml(cleanHtml, url);
       } catch (error: any) {
-        console.error(`[Amazon Scraper] Failed attempt ${attempt}:`, error.message);
+        console.error(`[ScrapingAnt] Failed attempt ${attempt}:`, error.message);
         retry(error);
       }
     },
-    { retries: 3, factor: 2, minTimeout: 2000 }
+    { retries: 1, factor: 2, minTimeout: 2000 }
   );
+}
+
+export async function resolveShortUrl(url: string): Promise<string> {
+  if (url.includes('amzn.in') || url.includes('amzn.eu') || url.includes('amzn.to')) {
+    try {
+      // Fetch the headers using GET to follow the redirect and get the expanded amazon.in URL
+      // (Amazon sometimes blocks HEAD requests)
+      const response = await fetch(url, { method: 'GET', redirect: 'follow' });
+      if (response.url) return response.url;
+    } catch (e) {
+      console.error("Failed to resolve short URL:", e);
+    }
+  }
+  return url;
+}
+
+export async function scrapeAmazonProduct(url: string): Promise<ScrapedProduct> {
+  if (!url) throw new Error("No URL provided");
+
+  const resolvedUrl = await resolveShortUrl(url);
+  const finalUrl = cleanAmazonUrl(resolvedUrl);
+
+  // Dynamically set proxy country based on regional Amazon domain
+  let countryCode = "us";
+  if (finalUrl.includes("amazon.in") || finalUrl.includes("amzn.in")) {
+    countryCode = "in";
+  } else if (url.includes("amazon.co.uk") || url.includes("amzn.eu")) {
+    countryCode = "gb";
+  } else if (url.includes("amazon.de")) {
+    countryCode = "de";
+  } else if (url.includes("amazon.fr")) {
+    countryCode = "fr";
+  } else if (url.includes("amazon.co.jp")) {
+    countryCode = "jp";
+  } else if (url.includes("amazon.ca")) {
+    countryCode = "ca";
+  }
+
+  return await scrapeWithScrapingAnt(finalUrl, countryCode);
+}
+
+export function cleanAmazonUrl(url: string): string {
+  if (!url) return url;
+  
+  if (!url.includes("amazon.") && !url.includes("amzn.")) {
+    return url;
+  }
+  
+  try {
+    const parsed = new URL(url);
+    const dpMatch = parsed.pathname.match(/\/dp\/([A-Z0-9]{10})/i);
+    const gpMatch = parsed.pathname.match(/\/gp\/product\/([A-Z0-9]{10})/i);
+    
+    const asin = (dpMatch && dpMatch[1]) || (gpMatch && gpMatch[1]);
+    if (asin) {
+      return `${parsed.protocol}//${parsed.hostname}/dp/${asin.toUpperCase()}`;
+    }
+  } catch (e) {
+    // ignore
+  }
+  return url;
 }
