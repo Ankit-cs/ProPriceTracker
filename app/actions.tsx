@@ -9,7 +9,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 
-const BYPASS_AUTH = false; // Bypass authentication for local testing
+const BYPASS_AUTH = true; // Bypass authentication for local testing
 
 const getServiceRoleClient = () => {
   return createSupabaseClient(
@@ -133,6 +133,11 @@ export async function addProduct(formData) {
       price: newPrice,
       currency: currency,
     });
+
+    if (!isUpdate && user.email) {
+      const { sendWelcomeAlert } = await import("@/lib/email");
+      sendWelcomeAlert(user.email, product);
+    }
 
     revalidatePath("/");
     return {

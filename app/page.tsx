@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { getProducts, getMockUser } from "./actions";
 import AddProductForm from "@/components/AddProductForm";
 import ProductCard from "@/components/ProductCard";
+import HeroCarousel from "@/components/HeroCarousel";
 import { TrendingDown, Shield, Bell, Rabbit } from "lucide-react";
 import Image from "next/image";
 
@@ -64,6 +65,8 @@ export default async function Home() {
           </p>
 
           <AddProductForm user={user} />
+
+          <HeroCarousel products={products} />
 
           {/* Features */}
           {products.length === 0 && (
