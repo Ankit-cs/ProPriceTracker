@@ -117,3 +117,63 @@ export async function sendConsolidatedPriceDropAlert(
     return { error: error.message };
   }
 }
+
+export async function sendWelcomeAlert(userEmail: string, product: any) {
+  try {
+    const { data, error } = await resend.emails.send({
+      from: process.env.RESEND_FROM_EMAIL || "updates@propricetracker.com",
+      to: userEmail,
+      subject: `🎉 Welcome to Price Tracking for ${product.name}`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+          <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background: #FA5D19; padding: 20px; border-radius: 8px 8px 0 0; text-align: center;">
+              <h2 style="color: white; margin: 0;">Welcome to ProPriceTracker 🚀</h2>
+            </div>
+            <div style="padding: 20px; border: 1px solid #ddd; border-top: none; border-radius: 0 0 8px 8px;">
+              <p>You are now tracking <strong>${product.name}</strong>.</p>
+              ${product.image_url ? `<img src="${product.image_url}" alt="Product" style="max-width: 200px; border-radius: 8px;" />` : ""}
+              <p>We'll notify you automatically when the price drops or when it comes back in stock.</p>
+              <a href="${product.url}" style="display: inline-block; background: #FA5D19; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">View Product</a>
+            </div>
+          </body>
+        </html>
+      `,
+    });
+    if (error) return { error };
+    return { success: true, data };
+  } catch (error: any) {
+    return { error: error.message };
+  }
+}
+
+export async function sendBackInStockAlert(userEmail: string, product: any) {
+  try {
+    const { data, error } = await resend.emails.send({
+      from: process.env.RESEND_FROM_EMAIL || "updates@propricetracker.com",
+      to: userEmail,
+      subject: `🔥 ${product.name} is Back in Stock!`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+          <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background: #10b981; padding: 20px; border-radius: 8px 8px 0 0; text-align: center;">
+              <h2 style="color: white; margin: 0;">Back in Stock Alert!</h2>
+            </div>
+            <div style="padding: 20px; border: 1px solid #ddd; border-top: none; border-radius: 0 0 8px 8px;">
+              <p>Great news! <strong>${product.name}</strong> is now available for purchase.</p>
+              ${product.image_url ? `<img src="${product.image_url}" alt="Product" style="max-width: 200px; border-radius: 8px;" />` : ""}
+              <p>Grab yours before they run out again!</p>
+              <a href="${product.url}" style="display: inline-block; background: #10b981; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Buy Now</a>
+            </div>
+          </body>
+        </html>
+      `,
+    });
+    if (error) return { error };
+    return { success: true, data };
+  } catch (error: any) {
+    return { error: error.message };
+  }
+}
