@@ -46,7 +46,7 @@ function cleanPriceString(priceText: string): string {
   return cleaned;
 }
 
-export async function searchAmazonProducts(keyword: string, limit = 10): Promise<ScrapedSearchResult[]> {
+export async function searchAmazonProducts(keyword: string, limit = 10, minPrice?: number, maxPrice?: number): Promise<ScrapedSearchResult[]> {
   if (!keyword) throw new Error("No keyword provided");
 
   const apiKey = process.env.SCRAPINGANT_API_KEY;
@@ -54,7 +54,14 @@ export async function searchAmazonProducts(keyword: string, limit = 10): Promise
 
   const client = new ScrapingAntClient({ apiKey });
   const encodedKeyword = encodeURIComponent(keyword);
-  const searchUrl = `https://www.amazon.in/s?k=${encodedKeyword}`;
+  let searchUrl = `https://www.amazon.in/s?k=${encodedKeyword}`;
+
+  if (minPrice !== undefined || maxPrice !== undefined) {
+    const minStr = minPrice ? minPrice * 100 : "";
+    const maxStr = maxPrice ? maxPrice * 100 : "";
+    searchUrl += `&rh=p_36%3A${minStr}-${maxStr}`;
+  }
+
 
   return promiseRetry(
     async (retry, attempt) => {

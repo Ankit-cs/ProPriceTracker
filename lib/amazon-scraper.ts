@@ -17,7 +17,11 @@ export interface ScrapedProduct {
   isAmazonChoice?: boolean;
   shortDescription?: string;
   fullDescription?: string;
+  features?: Record<string, string>;
   isInStock?: boolean;
+  soldBy?: string;
+  deliveryDate?: string;
+  frequentlyBoughtTogether?: string[];
 }
 
 function cleanPriceString(priceText: string): string {
@@ -234,6 +238,26 @@ export function parseAmazonHtml(cleanHtml: string, url: string): ScrapedProduct 
           throw new Error("Missing price or title, possibly blocked by CAPTCHA");
         }
 
+        // Sold By
+        const soldBy = $("#merchant-info").first().text().trim().replace(/\s+/g, ' ') || 
+                       $(".tabular-buybox-text[merchant]").first().text().trim().replace(/\s+/g, ' ') || 
+                       $("#sellerProfileTriggerId").first().text().trim() || "";
+
+        // Delivery Date
+        const deliveryDate = $("#mir-layout-DELIVERY_BLOCK-slot-PRIMARY_DELIVERY_MESSAGE_LARGE .a-text-bold").first().text().trim() || 
+                             $("#deliveryBlockMessage").first().text().trim().replace(/\s+/g, ' ') || "";
+
+        // Frequently Bought Together
+        const frequentlyBoughtTogether: string[] = [];
+        $("#sims-fbt-form .a-checkbox input[name='submit.addToCart']").each((_, el) => {
+           const val = $(el).val() as string;
+           if (val) frequentlyBoughtTogether.push(val);
+        });
+        $(".sims-fbt-image-box a").each((_, el) => {
+           const href = $(el).attr("href");
+           if (href) frequentlyBoughtTogether.push(href.split("/dp/")[1]?.split("/")[0] || href);
+        });
+
   return {
     productName: title,
     currentPrice: finalPrice,
@@ -248,29 +272,68 @@ export function parseAmazonHtml(cleanHtml: string, url: string): ScrapedProduct 
     isAmazonChoice,
     shortDescription,
     fullDescription,
-    isInStock
+    features: productDetails,
+    isInStock,
+    soldBy,
+    deliveryDate,
+    frequentlyBoughtTogether: [...new Set(frequentlyBoughtTogether.filter(Boolean))]
   };
 }
 
-async function scrapeWithScrapingAnt(url: string, countryCode: string): Promise<ScrapedProduct> {
+async function scrapeWithScrapingAnt(url: string, initialCountryCode: string, pincode?: string): Promise<ScrapedProduct> {
   const apiKey = process.env.SCRAPINGANT_API_KEY;
   if (!apiKey) throw new Error("SCRAPINGANT_API_KEY is not defined in environment variables");
 
   const client = new ScrapingAntClient({ apiKey });
+  
+  // Smart Proxy Rotation: List of fallback proxy regions
+  const proxyRegions = [initialCountryCode, "us", "gb", "de", "ca", "fr", "it", "es"].filter((v, i, a) => a.indexOf(v) === i);
+
+  let js_snippet: string | undefined = undefined;
+  if (pincode) {
+    const jsCode = `
+      const setPincode = async () => {
+        try {
+          const el = document.getElementById('nav-global-location-popover-link') || document.getElementById('nav-global-location-slot');
+          if (el) el.click();
+          await new Promise(r => setTimeout(r, 2000));
+          const input = document.getElementById('GLUXZipUpdateInput');
+          if (input) {
+            input.value = '${pincode}';
+            const applyBtn = document.getElementById('GLUXZipUpdate') || document.querySelector('#GLUXZipUpdate input');
+            if (applyBtn) {
+              applyBtn.click();
+              await new Promise(r => setTimeout(r, 2000));
+            }
+          }
+        } catch(e) {}
+      };
+      await setPincode();
+    `;
+    js_snippet = Buffer.from(jsCode).toString('base64');
+  }
 
   return promiseRetry(
     async (retry, attempt) => {
+      // Use a different region for each attempt if possible
+      const regionIndex = (attempt - 1) % proxyRegions.length;
+      const countryCode = proxyRegions[regionIndex];
+      
       try {
-        console.log(`[ScrapingAnt] Attempt ${attempt} for ${url} (Country: ${countryCode})`);
-        const response = await client.scrape(url, { proxy_country: countryCode });
+        console.log(`[ScrapingAnt] Attempt ${attempt} for ${url} (Proxy Country: ${countryCode}, Pincode: ${pincode || 'none'})`);
+        const options: any = { proxy_country: countryCode };
+        if (js_snippet) {
+           options.js_snippet = js_snippet;
+        }
+        const response = await client.scrape(url, options);
         const cleanHtml = response.content.replace(/\s\s+/g, "").replace(/\n/g, "");
         return parseAmazonHtml(cleanHtml, url);
       } catch (error: any) {
-        console.error(`[ScrapingAnt] Failed attempt ${attempt}:`, error.message);
+        console.error(`[ScrapingAnt] Failed attempt ${attempt} (Proxy: ${countryCode}):`, error.message);
         retry(error);
       }
     },
-    { retries: 1, factor: 2, minTimeout: 2000 }
+    { retries: 3, factor: 1.5, minTimeout: 2000 }
   );
 }
 
@@ -304,30 +367,16 @@ export async function resolveShortUrl(url: string): Promise<string> {
   return url;
 }
 
-export async function scrapeAmazonProduct(url: string): Promise<ScrapedProduct> {
+export async function scrapeAmazonProduct(url: string, userRegion?: string, pincode?: string): Promise<ScrapedProduct> {
   if (!url) throw new Error("No URL provided");
 
   const resolvedUrl = await resolveShortUrl(url);
   const finalUrl = cleanAmazonUrl(resolvedUrl);
 
-  // Dynamically set proxy country based on regional Amazon domain
-  let countryCode = "us";
-  if (finalUrl.includes("amazon.in") || finalUrl.includes("amzn.in")) {
-    countryCode = "in";
-  } else if (url.includes("amazon.co.uk") || url.includes("amzn.eu")) {
-    countryCode = "gb";
-  } else if (url.includes("amazon.de")) {
-    countryCode = "de";
-  } else if (url.includes("amazon.fr")) {
-    countryCode = "fr";
-  } else if (url.includes("amazon.co.jp")) {
-    countryCode = "jp";
-  } else if (url.includes("amazon.ca")) {
-    countryCode = "ca";
-  }
-
+  // You mentioned you are building this for India only, so force the region to 'in'.
+  let countryCode = "in";
   try {
-    return await scrapeWithScrapingAnt(finalUrl, countryCode);
+    return await scrapeWithScrapingAnt(finalUrl, countryCode, pincode);
   } catch (error) {
     console.error("ScrapingAnt failed, trying axios fallback...");
     return await scrapeWithAxios(finalUrl);
