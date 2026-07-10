@@ -26,6 +26,7 @@ async function runMigration() {
       ADD COLUMN IF NOT EXISTS is_discounted BOOLEAN DEFAULT false,
       ADD COLUMN IF NOT EXISTS original_price NUMERIC,
       ADD COLUMN IF NOT EXISTS amazon_id TEXT,
+      ADD COLUMN IF NOT EXISTS is_in_stock BOOLEAN DEFAULT true,
       ADD COLUMN IF NOT EXISTS alerts_enabled BOOLEAN DEFAULT FALSE;
     `;
 
