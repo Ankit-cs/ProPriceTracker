@@ -121,16 +121,16 @@ export async function searchAmazonProducts(keyword: string, limit = 10): Promise
           let rating = 0;
           let reviewsCount = 0;
 
-          const ratingText = element.find(".a-icon-star-small span.a-icon-alt").text().trim() || 
-                             element.find(".a-icon-star span.a-icon-alt").text().trim() || 
-                             element.find("i.a-icon-star span").text().trim();
+          const ratingText = element.find(".a-icon-star-small span.a-icon-alt").first().text().trim() || 
+                             element.find(".a-icon-star span.a-icon-alt").first().text().trim() || 
+                             element.find("i.a-icon-star span").first().text().trim();
           if (ratingText) {
             const parsedRating = parseFloat(ratingText.split(" out")[0]);
             if (!isNaN(parsedRating)) rating = parsedRating;
           }
 
-          const reviewsText = element.find("span[aria-label*='ratings']").attr("aria-label") ||
-                              element.find(".a-size-base.s-underline-text").text().trim();
+          const reviewsText = element.find("span[aria-label*='ratings']").first().attr("aria-label") ||
+                              element.find(".a-size-base.s-underline-text").first().text().trim();
           if (reviewsText) {
             const cleanReviews = reviewsText.replace(/[^\d]/g, "");
             if (cleanReviews) reviewsCount = parseInt(cleanReviews);
