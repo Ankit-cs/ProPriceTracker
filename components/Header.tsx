@@ -1,8 +1,15 @@
 "use client";
 
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import AuthButton from "./AuthButton";
+import SearchCmdk from "./SearchCmdk";
 
 export default function Header({ user }) {
+  const pathname = usePathname();
+
+  const isActive = (path: string) => pathname === path;
+
   return (
     <header className="fixed inset-x-0 top-0 z-50 transition-[padding] duration-500 pt-5">
       <div className="mx-auto max-w-[1400px] px-4 md:px-6">
@@ -19,25 +26,25 @@ export default function Header({ user }) {
 
           {/* Navigation links (Desktop) */}
           <nav className="hidden lg:flex items-center gap-1">
-            <a href="/deals" className="px-3.5 py-1.5 rounded-full text-[13px] font-medium text-ink-soft hover:text-ink transition-colors">
+            <Link href="/deals" prefetch={true} className={`px-3.5 py-1.5 rounded-full text-[13px] font-medium transition-colors ${isActive('/deals') ? 'bg-ink/5 text-ink' : 'text-ink-soft hover:text-ink'}`}>
               Deals
-            </a>
-            <a href="/categories" className="px-3.5 py-1.5 rounded-full text-[13px] font-medium text-ink-soft hover:text-ink transition-colors">
+            </Link>
+            <Link href="/categories" prefetch={true} className={`px-3.5 py-1.5 rounded-full text-[13px] font-medium transition-colors ${isActive('/categories') ? 'bg-ink/5 text-ink' : 'text-ink-soft hover:text-ink'}`}>
               Categories
-            </a>
-            <a href="/compare" className="px-3.5 py-1.5 rounded-full text-[13px] font-medium text-ink-soft hover:text-ink transition-colors">
+            </Link>
+            <Link href="/compare" prefetch={true} className={`px-3.5 py-1.5 rounded-full text-[13px] font-medium transition-colors ${isActive('/compare') ? 'bg-ink/5 text-ink' : 'text-ink-soft hover:text-ink'}`}>
               Compare
-            </a>
-            <a href="/price-drops" className="px-3.5 py-1.5 rounded-full text-[13px] font-medium text-ink-soft hover:text-ink transition-colors">
+            </Link>
+            <Link href="/price-drops" prefetch={true} className={`px-3.5 py-1.5 rounded-full text-[13px] font-medium transition-colors ${isActive('/price-drops') ? 'bg-ink/5 text-ink' : 'text-ink-soft hover:text-ink'}`}>
               Price Drops
-            </a>
-            <a href="/sales-calendar" className="px-3.5 py-1.5 rounded-full text-[13px] font-medium text-ink-soft hover:text-ink transition-colors">
+            </Link>
+            <Link href="/sales-calendar" prefetch={true} className={`px-3.5 py-1.5 rounded-full text-[13px] font-medium transition-colors ${isActive('/sales-calendar') ? 'bg-ink/5 text-ink' : 'text-ink-soft hover:text-ink'}`}>
               Sales Calendar
-            </a>
-            <a href="/news" className="px-3.5 py-1.5 rounded-full text-[13px] font-medium text-ink-soft hover:text-ink transition-colors">
+            </Link>
+            <Link href="/news" prefetch={true} className={`px-3.5 py-1.5 rounded-full text-[13px] font-medium transition-colors ${isActive('/news') ? 'bg-ink/5 text-ink' : 'text-ink-soft hover:text-ink'}`}>
               News
-            </a>
-            <a href="/ai-assistant" className="inline-flex items-center gap-1 px-3.5 py-1.5 rounded-full text-[13px] font-medium text-ink-soft hover:text-ink transition-colors">
+            </Link>
+            <Link href="/ai-assistant" prefetch={true} className={`inline-flex items-center gap-1 px-3.5 py-1.5 rounded-full text-[13px] font-medium transition-colors ${isActive('/ai-assistant') ? 'bg-ink/5 text-ink' : 'text-ink-soft hover:text-ink'}`}>
               <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-accent" aria-hidden="true">
                 <path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"></path>
                 <path d="M20 2v4"></path>
@@ -45,12 +52,16 @@ export default function Header({ user }) {
                 <circle cx="4" cy="20" r="2"></circle>
               </svg>
               AI Assistant
-            </a>
+            </Link>
           </nav>
 
           {/* Right Buttons */}
           <div className="flex items-center gap-2">
-            <button aria-label="Search" className="hidden md:flex items-center gap-2 h-9 pl-3 pr-2 rounded-full text-[12.5px] text-ink-muted hover:text-ink transition-all border border-line/60 hover:border-ink/30 hover:bg-surface-2/60 cursor-pointer">
+            <button 
+              onClick={() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))}
+              aria-label="Search" 
+              className="hidden md:flex items-center gap-2 h-9 pl-3 pr-2 rounded-full text-[12.5px] text-ink-muted hover:text-ink transition-all border border-line/60 hover:border-ink/30 hover:bg-surface-2/60 cursor-pointer"
+            >
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="m21 21-4.34-4.34"></path>
                 <circle cx="11" cy="11" r="8"></circle>
@@ -62,6 +73,7 @@ export default function Header({ user }) {
           </div>
         </div>
       </div>
+      <SearchCmdk />
     </header>
   );
 }
