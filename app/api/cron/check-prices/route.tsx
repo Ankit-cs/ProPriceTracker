@@ -36,6 +36,7 @@ export async function POST(request) {
     };
 
     const userAlerts: Record<string, any[]> = {};
+    const userBackInStockAlerts: Record<string, any[]> = {};
 
     for (let i = 0; i < products.length; i++) {
       const product = products[i];
@@ -77,10 +78,19 @@ export async function POST(request) {
           updateData.is_amazon_choice = productData.isAmazonChoice || false;
           updateData.is_discounted = productData.isDiscounted || false;
           updateData.original_price = productData.originalPrice || 0;
+          updateData.is_in_stock = productData.isInStock !== undefined ? productData.isInStock : true;
         }
 
         if (newPrice !== oldPrice) {
           results.priceChanges++;
+        }
+
+        // Logic for back in stock alert
+        if (product.is_in_stock === false && updateData.is_in_stock === true) {
+           if (!userBackInStockAlerts[product.user_id]) {
+              userBackInStockAlerts[product.user_id] = [];
+           }
+           userBackInStockAlerts[product.user_id].push({ ...product, ...updateData });
         }
 
         // Logic for alerting based on the threshold scale
@@ -140,6 +150,24 @@ export async function POST(request) {
            }
        } catch(err) {
            console.error("Error sending digest email for user", userId, err);
+       }
+    }
+
+    // Send Back in Stock Alerts
+    for (const [userId, alerts] of Object.entries(userBackInStockAlerts)) {
+       try {
+           const { data: { user } } = await supabase.auth.admin.getUserById(userId);
+           if (user?.email) {
+             const { sendBackInStockAlert } = await import("@/lib/email");
+             for (const p of alerts) {
+               const emailResult = await sendBackInStockAlert(user.email, p);
+               if (emailResult.success) {
+                 results.alertsSent++;
+               }
+             }
+           }
+       } catch(err) {
+           console.error("Error sending back in stock email for user", userId, err);
        }
     }
 
