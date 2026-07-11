@@ -3,6 +3,8 @@ import { getProducts, getPriceHistory } from "@/app/actions";
 import { Bot } from "lucide-react";
 import AIAssistantClient from "./AIAssistantClient";
 
+export const dynamic = "force-dynamic";
+
 // Helper to group price history into Weekly OHLC
 function buildOHLCData(history: any[]) {
   if (!history || history.length === 0) return [];

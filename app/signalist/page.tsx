@@ -7,6 +7,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { TrendingUp, Activity, BarChart3, Zap } from "lucide-react";
 
+export const dynamic = "force-dynamic";
+
 export default async function SignalistPage() {
   const portfolios = await getPortfolios();
   const products = await getProducts();
