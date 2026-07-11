@@ -15,6 +15,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import EmailModal from "./EmailModal";
+import PriceInfoCard from "./PriceInfoCard";
+import { WobbleButton } from "./WobbleButton";
 import {
   ExternalLink,
   Trash2,
@@ -261,20 +264,29 @@ export default function ProductCard({ product }) {
                 </div>
               )}
 
-              {/* Aggregates Dashboard */}
-              <div className="grid grid-cols-3 gap-2 mt-2 bg-neutral-50/50 p-2 rounded-xl border border-line/40 text-center">
-                <div>
-                  <p className="text-[9px] text-ink-muted uppercase font-bold tracking-wider">Lowest</p>
-                  <p className="text-xs font-semibold text-green-600">{formatPrice(product.lowest_price || livePrice, product.currency)}</p>
-                </div>
-                <div>
-                  <p className="text-[9px] text-ink-muted uppercase font-bold tracking-wider">Average</p>
-                  <p className="text-xs font-semibold text-neutral-700">{formatPrice(product.average_price || livePrice, product.currency)}</p>
-                </div>
-                <div>
-                  <p className="text-[9px] text-ink-muted uppercase font-bold tracking-wider">Highest</p>
-                  <p className="text-xs font-semibold text-red-600">{formatPrice(product.highest_price || livePrice, product.currency)}</p>
-                </div>
+              {/* Aggregates Dashboard - Replaced with PriceInfoCards */}
+              <div className="flex gap-1.5 mt-2 overflow-x-auto pb-2">
+                <PriceInfoCard 
+                  title="Lowest" 
+                  icon={TrendingDown} 
+                  value={formatPrice(product.lowest_price || livePrice, product.currency)} 
+                  borderColorClass="border-green-500"
+                  iconColorClass="text-green-500"
+                />
+                <PriceInfoCard 
+                  title="Average" 
+                  icon={Activity} 
+                  value={formatPrice(product.average_price || livePrice, product.currency)} 
+                  borderColorClass="border-blue-500"
+                  iconColorClass="text-blue-500"
+                />
+                <PriceInfoCard 
+                  title="Highest" 
+                  icon={TrendingUp} 
+                  value={formatPrice(product.highest_price || livePrice, product.currency)} 
+                  borderColorClass="border-red-500"
+                  iconColorClass="text-red-500"
+                />
               </div>
             </div>
           </div>
@@ -323,12 +335,11 @@ export default function ProductCard({ product }) {
             </Button>
           )}
 
-          <Button variant="outline" size="sm" asChild className="gap-1">
-            <Link href={product.url} target="_blank" rel="noopener noreferrer">
-              <ExternalLink className="w-4 h-4" />
-              View Product
-            </Link>
-          </Button>
+          <WobbleButton 
+            title="View Product" 
+            type="sm" 
+            onClick={() => window.open(product.url, '_blank')}
+          />
 
           <Button
             variant="ghost"
@@ -341,20 +352,24 @@ export default function ProductCard({ product }) {
             Remove
           </Button>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRefresh}
-            disabled={deleting || refreshing}
-            className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 border-indigo-200 hover:border-indigo-300 gap-1 ml-auto"
-          >
-            {refreshing ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <RefreshCw className="w-4 h-4" />
-            )}
-            {refreshing ? "Refreshing..." : "Refresh"}
-          </Button>
+          <div className="ml-auto flex gap-2">
+            <EmailModal productId={product.id} productName={product.name} />
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={deleting || refreshing}
+              className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 border-indigo-200 hover:border-indigo-300 gap-1"
+            >
+              {refreshing ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <RefreshCw className="w-4 h-4" />
+              )}
+              {refreshing ? "Refreshing..." : "Refresh"}
+            </Button>
+          </div>
         </div>
 
         {showFeatures && (product.short_description || product.full_description) && (
