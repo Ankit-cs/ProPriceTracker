@@ -2,7 +2,7 @@
 
 **Live Demo:** [https://buykarley.vercel.app](https://buykarley.vercel.app)
 
-ProPriceTracker is an intelligent and automated price tracking application that allows users to monitor product prices across various e-commerce platforms. Built with a modern Next.js stack, it uses Firecrawl for structured scraping, Supabase for scalable backend operations, and Resend for transactional email alerts.
+ProPriceTracker is an intelligent and automated price tracking application that allows users to monitor product prices across various e-commerce platforms. Built with a modern Next.js stack, it uses native custom scrapers for Flipkart & Myntra (via their internal APIs), ScrapingAnt for Amazon, Supabase for scalable backend operations, and Resend for transactional email alerts.
 
 ## Key Features
 
@@ -26,6 +26,13 @@ ProPriceTracker is an intelligent and automated price tracking application that 
 - **[NEW] Resilient Parsers & Cleaners:** Strips messy tracking parameters from URLs and parses international currency symbols (including Indian Lakhs) safely.
 - **[NEW] Smart Notification Decision Engine:** Advanced cron logic that intelligently prioritizes email alerts (e.g., distinguishing an All-Time Low vs. a Target Threshold vs. a standard drop) to prevent notification fatigue.
 - **[NEW] Embedded Email Charts:** Automatically generates and embeds static QuickChart visual graphs of a product's 14-day price history directly inside the email alerts so users never have to leave their inbox.
+- **[NEW] Native Flipkart Scraper:** Dedicated custom scraper (`lib/flipkart-scraper.ts`) using Axios + Cheerio that extracts full product metadata — title, current price, MRP, product image, star rating, review count, seller name, and delivery date — from Flipkart pages without Firecrawl, eliminating 500 timeout errors.
+- **[NEW] Native Myntra Scraper:** Dedicated scraper (`lib/myntra-scraper.ts`) that calls Myntra's internal product gateway JSON API (`/gateway/v2/product/{id}`) directly, bypassing all anti-bot HTML blocking. Returns rich data including high-res images, discounted price, MRP, seller, and availability status.
+- **[NEW] Smart Platform Router:** `app/actions.tsx` automatically detects the URL domain on product add and routes Amazon → ScrapingAnt, Flipkart → custom native scraper, Myntra → gateway API scraper, and other sites → Firecrawl. Zero manual selection needed.
+- **[NEW] URL Cleaners for All Platforms:** `lib/url-cleaner.ts` strips all tracking/UTM parameters from Amazon, Flipkart, and Myntra URLs, saving canonical versions to the database for accurate de-duplication.
+- **[NEW] Day 1 Price History Bulk Importer:** When a brand-new product is first tracked, the app fetches its slug from `pricehistoryapp.com` via SerpAPI and bulk-imports all historical date-price data into `price_history`, populating the chart from Day 1 for all platforms.
+- **[NEW] Pricewatcha Webhook Integration:** Registers products with Pricewatcha in the background for passive webhook-driven price drop alerts, without blocking the main scrape flow.
+- **[NEW] Resilient Image Extraction:** Multi-layered image extraction with CSS class fallbacks, `og:image` meta fallback, and a generic `img[src]` scan — ensures product images are always saved even when site markup changes.
 
 ## Architecture Flow
 
@@ -33,9 +40,12 @@ ProPriceTracker is an intelligent and automated price tracking application that 
 sequenceDiagram
     participant U as User
     participant A as ProPriceTracker (Next.js)
-    participant S as jSupabase (DB & Auth)
+    participant S as Supabase (DB & Auth)
     participant SA as ScrapingAnt (Amazon Scraper)
+    participant FK as Flipkart Native Scraper
+    participant MY as Myntra Gateway API
     participant F as Firecrawl (General Scraper)
+    participant PW as Pricewatcha (Webhooks)
     participant R as Resend (Email)
     participant E as E-Commerce Site
 
@@ -45,22 +55,31 @@ sequenceDiagram
         SA->>E: Fetch page
         E-->>SA: HTML Content
         SA-->>A: Rich Metadata (ASIN, rating, choice, desc)
+    else is Flipkart URL
+        A->>FK: Axios + Cheerio scrape
+        FK->>E: Fetch Flipkart page
+        E-->>FK: HTML Content
+        FK-->>A: Title, Price, Image, Seller, Delivery
+    else is Myntra URL
+        A->>MY: Call /gateway/v2/product/{id}
+        MY-->>A: JSON (Price, Images, Seller, Rating)
     else is Other Store
         A->>F: Request extraction
         F->>E: Fetch page
         F-->>A: Basic Data (Price, Name, Image)
     end
-    A->>S: Store Product & History
+    A->>S: Store Product & Price History
+    A->>PW: Register webhook (background, non-blocking)
     S-->>A: Confirm Storage
     A-->>U: Render Dashboard Card
 
     Note over S,E: Daily Cron Job Flow
     S->>A: Trigger /api/cron/check-prices
-    A->>SA/F: Scrape updated prices
-    SA/F-->>A: New Prices
+    A->>SA/FK/MY/F: Scrape updated prices (per platform)
+    SA/FK/MY/F-->>A: New Prices
     A->>S: Update DB & History
     alt Price Dropped & Alerts Enabled
-        A->>R: Trigger Email Alert
+        A->>R: Trigger Email Alert (with embedded chart)
         R-->>U: Price Drop Notification
     end
 ```
@@ -149,6 +168,12 @@ ProPriceTracker/
 │   ├── firecrawl.ts              # Firecrawl API scraper integration
 │   ├── amazon-scraper.ts         # Amazon detail scraper using ScrapingAnt & URL canonical cleaner
 │   ├── amazon-search-scraper.ts  # Amazon search-list scraper for comparison views
+│   ├── flipkart-scraper.ts       # [NEW] Native Flipkart scraper (Axios + Cheerio)
+│   ├── myntra-scraper.ts         # [NEW] Myntra scraper via internal gateway JSON API
+│   ├── url-cleaner.ts            # [NEW] URL canonicalizer for Amazon, Flipkart & Myntra
+│   ├── pricewatcha.ts            # [NEW] Pricewatcha webhook registration client
+│   ├── price-history-crawler.ts  # [NEW] Day-1 price history fetcher via SerpAPI + pricehistoryapp.com
+│   ├── redis.ts                  # Upstash Redis rate limiting client
 │   └── utils.ts                  # Class merger helpers
 └── utils/                        # Utilities and Supabase clients
     └── supabase/
