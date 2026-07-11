@@ -3,7 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { scrapeProduct } from "@/lib/firecrawl";
 import { scrapeAmazonProduct } from "@/lib/amazon-scraper";
 import { cleanAmazonUrl } from "@/lib/url-cleaner";
-import { sendConsolidatedPriceDropAlert, sendBackInStockAlert } from "@/lib/email";
+import { sendConsolidatedPriceDropAlert, sendBackInStockAlert, sendLowestPriceAlert, sendThresholdMetAlert } from "@/lib/email";
 
 export async function POST(request) {
   try {
@@ -39,6 +39,8 @@ export async function POST(request) {
 
     const userAlerts: Record<string, any[]> = {};
     const userBackInStockAlerts: Record<string, any[]> = {};
+    const userLowestPriceAlerts: Record<string, any[]> = {};
+    const userThresholdMetAlerts: Record<string, any[]> = {};
 
     for (let i = 0; i < products.length; i++) {
       const product = products[i];
@@ -79,8 +81,9 @@ export async function POST(request) {
         
         const { data: history } = await supabase
           .from("price_history")
-          .select("price")
-          .eq("product_id", product.id);
+          .select("price, checked_at")
+          .eq("product_id", product.id)
+          .order("checked_at", { ascending: true });
         
         const historyPrices = history ? history.map(h => parseFloat(h.price)) : [];
         const sum = historyPrices.reduce((acc, p) => acc + p, 0) + newPrice;
@@ -134,19 +137,36 @@ export async function POST(request) {
           if (newPrice < baselinePrice && tracker.alerts_enabled) {
             const priceDrop = baselinePrice - newPrice;
             const percentageDrop = (priceDrop / baselinePrice) * 100;
+            
+            // Smart Notification Decision Engine
+            const isLowestEver = newPrice < lowestPrice;
+            const isThresholdMet = targetDiscount > 0 && percentageDrop >= targetDiscount;
 
-            if (percentageDrop >= targetDiscount) {
-              if (!userAlerts[tracker.user_id]) {
-                userAlerts[tracker.user_id] = [];
-              }
+            if (isLowestEver) {
+              // Priority 1: Lowest Price Ever
+              if (!userLowestPriceAlerts[tracker.user_id]) userLowestPriceAlerts[tracker.user_id] = [];
+              userLowestPriceAlerts[tracker.user_id].push({ ...product, ...updateData, history });
+            } else if (isThresholdMet) {
+              // Priority 2: Massive Target Discount Met
+              if (!userThresholdMetAlerts[tracker.user_id]) userThresholdMetAlerts[tracker.user_id] = [];
+              userThresholdMetAlerts[tracker.user_id].push({
+                product: { ...product, ...updateData },
+                discountPercentage: percentageDrop.toFixed(0)
+              });
+            } else if (percentageDrop >= targetDiscount) { // Default threshold for regular drops
+              // Priority 3: Consolidated standard drop
+              if (!userAlerts[tracker.user_id]) userAlerts[tracker.user_id] = [];
               userAlerts[tracker.user_id].push({
                 product: { ...product, ...updateData },
                 oldPrice: baselinePrice,
                 newPrice: newPrice,
                 priceDrop: priceDrop,
-                percentageDrop: percentageDrop.toFixed(1)
+                percentageDrop: percentageDrop.toFixed(1),
+                history
               });
+            }
 
+            if (isLowestEver || isThresholdMet || percentageDrop >= targetDiscount) {
               // Update user's last notified price
               await supabase
                 .from("user_tracked_products")
@@ -242,6 +262,36 @@ export async function POST(request) {
         }
       } catch(err) {
         console.error("Error sending back in stock email for user", userId, err);
+      }
+    }
+
+    // Send Lowest Price Alerts
+    for (const [userId, alerts] of Object.entries(userLowestPriceAlerts)) {
+      try {
+        const { data: { user } } = await supabase.auth.admin.getUserById(userId);
+        if (user?.email) {
+          for (const p of alerts) {
+            const emailResult = await sendLowestPriceAlert(user.email, p, p.history);
+            if (emailResult.success) results.alertsSent++;
+          }
+        }
+      } catch(err) {
+        console.error("Error sending lowest price email for user", userId, err);
+      }
+    }
+
+    // Send Threshold Met Alerts
+    for (const [userId, alerts] of Object.entries(userThresholdMetAlerts)) {
+      try {
+        const { data: { user } } = await supabase.auth.admin.getUserById(userId);
+        if (user?.email) {
+          for (const a of alerts) {
+            const emailResult = await sendThresholdMetAlert(user.email, a.product, a.discountPercentage);
+            if (emailResult.success) results.alertsSent++;
+          }
+        }
+      } catch(err) {
+        console.error("Error sending threshold met email for user", userId, err);
       }
     }
 
