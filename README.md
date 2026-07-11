@@ -6,24 +6,24 @@ ProPriceTracker is an intelligent and automated price tracking application that 
 
 ## Key Features
 
-- 🛒 **Universal Tracking:** Monitor items from Amazon (using ScrapingAnt) and other sites like BestBuy, Zara, Walmart (via Firecrawl).
-- 📊 **Detailed Amazon Metadata:** Extracts and displays star ratings, review counts, popularity scores, choice badges, ASIN numbers, and collapsible features/descriptions.
-- 📈 **Price Trends & Alerts:** Visualize history with interactive charts, toggle price alerts, and receive email notifications on price drops.
-- ⚡ **[NEW] Signalist Trading Desk:** Build "Dream Setups" (Portfolios) with real-time price tracking. Includes technical indicators like Moving Average, Volatility %, Sentiment Scores, and "Buy/Wait" signals for products.
-- 🟢 **[NEW] Real-time Flashes:** UI instantly flashes green or red via Supabase WebSockets the moment a price changes in the backend.
-- 🧠 **[NEW] Serverless AI Assistant:** A built-in AI chat that uses natural language processing (`sentiment` package) to analyze your questions, combining your emotional tone with historical price averages to give personalized "Buy Now" or "Wait" signals. Pure TypeScript, no Python backend required!
-- 🖼️ **[NEW] Hero Carousel:** Beautiful interactive product showcase on the landing page.
-- 🔒 **Dynamic Auth / Dev Bypass:** Secure Google OAuth integration, with a built-in `BYPASS_AUTH` toggle for frictionless local sandbox testing.
-- 🤖 **Automated Checks:** Daily cron jobs check tracked products and notify users of drop alerts.
-- 📄 **[NEW] Export to PDF:** Easily generate and download a clean PDF report containing all tracked products, their descriptions, and thumbnail images.
-- 🚚 **[NEW] Location-Based Delivery Details:** Enter a specific Pincode for any Amazon product directly on its card to fetch accurate, real-time Delivery Dates and "Sold By" merchant data.
-- 🔄 **[NEW] Multi-Tenant Scaling Optimization:** Products are stored globally unique in the database and mapped to users, reducing total scraping calls and database bloat by over 90%.
-- 🛑 **[NEW] API Rate Limiting Protection:** Integrated `@upstash/ratelimit` via Upstash Redis to restrict spam requests on product tracks and organic search routes.
-- 🔍 **[NEW] Google Shopping Search:** Users can search products by name directly via SerpAPI instead of pasting raw URLs, tracking matching items instantly.
-- 📆 **[NEW] Day 1 Price History Syncer:** Crawls Google for a product's PriceHistoryApp slug on Day 1, parsing and bulk-saving the last 90 days of historical date-price data into your database.
-- 📈 **[NEW] PriceHistoryApp Embedded Visuals:** Displays the interactive historical graph iframe on product card footers as an additional option.
-- 🤝 **[NEW] Global Alternative Deals Feed:** Surfaces top discounted items tracked globally by the community at the bottom of the Price Drops page.
-- 🧹 **[NEW] Resilient Parsers & Cleaners:** Strips messy tracking parameters from URLs and parses international currency symbols (including Indian Lakhs) safely.
+- **Universal Tracking:** Monitor items from Amazon (using ScrapingAnt) and other sites like BestBuy, Zara, Walmart (via Firecrawl).
+- **Detailed Amazon Metadata:** Extracts and displays star ratings, review counts, popularity scores, choice badges, ASIN numbers, and collapsible features/descriptions.
+- **Price Trends & Alerts:** Visualize history with interactive charts, toggle price alerts, and receive email notifications on price drops.
+- **[NEW] Signalist Trading Desk:** Build "Dream Setups" (Portfolios) with real-time price tracking. Includes technical indicators like Moving Average, Volatility %, Sentiment Scores, and "Buy/Wait" signals for products.
+- **[NEW] Real-time Flashes:** UI instantly flashes green or red via Supabase WebSockets the moment a price changes in the backend.
+- **[NEW] Serverless AI Assistant:** A built-in AI chat that uses natural language processing (`sentiment` package) to analyze your questions, combining your emotional tone with historical price averages to give personalized "Buy Now" or "Wait" signals. Pure TypeScript, no Python backend required!
+- **[NEW] Hero Carousel:** Beautiful interactive product showcase on the landing page.
+- **Dynamic Auth / Dev Bypass:** Secure Google OAuth integration, with a built-in `BYPASS_AUTH` toggle for frictionless local sandbox testing.
+- **Automated Checks:** Daily cron jobs check tracked products and notify users of drop alerts.
+- **[NEW] Export to PDF:** Easily generate and download a clean PDF report containing all tracked products, their descriptions, and thumbnail images.
+- **[NEW] Location-Based Delivery Details:** Enter a specific Pincode for any Amazon product directly on its card to fetch accurate, real-time Delivery Dates and "Sold By" merchant data.
+- **[NEW] Multi-Tenant Scaling Optimization:** Products are stored globally unique in the database and mapped to users, reducing total scraping calls and database bloat by over 90%.
+- **[NEW] API Rate Limiting Protection:** Integrated `@upstash/ratelimit` via Upstash Redis to restrict spam requests on product tracks and organic search routes.
+- **[NEW] Google Shopping Search:** Users can search products by name directly via SerpAPI instead of pasting raw URLs, tracking matching items instantly.
+- **[NEW] Day 1 Price History Syncer:** Crawls Google for a product's PriceHistoryApp slug on Day 1, parsing and bulk-saving the last 90 days of historical date-price data into your database.
+- **[NEW] PriceHistoryApp Embedded Visuals:** Displays the interactive historical graph iframe on product card footers as an additional option.
+- **[NEW] Global Alternative Deals Feed:** Surfaces top discounted items tracked globally by the community at the bottom of the Price Drops page.
+- **[NEW] Resilient Parsers & Cleaners:** Strips messy tracking parameters from URLs and parses international currency symbols (including Indian Lakhs) safely.
 
 ## Architecture Flow
 
@@ -63,7 +63,7 @@ sequenceDiagram
     end
 ```
 
-## ⚡ Signalist Trading Desk (`/signalist`)
+## Signalist Trading Desk (`/signalist`)
 
 The **Signalist Trading Desk** is an advanced sub-module designed for users who want to group products into logical tracking portfolios (e.g., "Gaming PC Build", "Smart Home Upgrades") and monitor their aggregate value with algorithmic trading indicators.
 
