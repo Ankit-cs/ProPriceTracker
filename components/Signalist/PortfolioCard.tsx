@@ -3,9 +3,10 @@
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Trash2, Link, Loader2, MinusCircle } from "lucide-react";
+import { Trash2, Link, Loader2, MinusCircle, Share2 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { addPortfolioItem, addURLToPortfolio, deletePortfolioItem } from "@/app/signalist/actions";
+import { toast } from "sonner";
 
 export default function PortfolioCard({ 
   portfolio, 
@@ -85,7 +86,20 @@ export default function PortfolioCard({
 
   return (
     <Card className="w-full relative overflow-hidden transition-all hover:shadow-md border-border/40">
-      <div className="absolute top-0 right-0 p-4">
+      <div className="absolute top-0 right-0 p-4 flex items-center gap-1">
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="text-muted-foreground hover:text-blue-500 transition-colors"
+          onClick={() => {
+            const url = `${window.location.origin}/share/${portfolio.id}`;
+            navigator.clipboard.writeText(url);
+            toast.success("Share link copied!");
+          }}
+          title="Share Wishlist"
+        >
+          <Share2 className="h-4 w-4" />
+        </Button>
         <Button 
           variant="ghost" 
           size="icon" 
