@@ -482,6 +482,64 @@ export async function getPriceHistory(productId) {
   }
 }
 
+export async function ensurePriceHistory(productId: string) {
+  try {
+    const cookieStore = await cookies();
+    const supabase = BYPASS_AUTH ? getServiceRoleClient() : createClient(cookieStore);
+    
+    // First, check how much history exists
+    const { count, error: countErr } = await supabase
+      .from("price_history")
+      .select("*", { count: "exact", head: true })
+      .eq("product_id", productId);
+      
+    if (countErr) throw countErr;
+    
+    // If we already have more than 1 entry, no need to backfill
+    if (count && count > 1) {
+      return { success: true, message: "History already exists" };
+    }
+
+    // Fetch product details to get the name
+    const { data: product, error: prodErr } = await supabase
+      .from("products")
+      .select("*")
+      .eq("id", productId)
+      .single();
+
+    if (prodErr || !product || !product.name) {
+      return { error: "Product not found or missing name" };
+    }
+
+    // Attempt to backfill
+    const slug = await fetchPriceHistorySlug(product.name);
+    if (!slug) {
+      return { error: "Could not find history slug for this product" };
+    }
+
+    const enhancedData = await getEnhancedPriceData(slug);
+    if (!enhancedData || !enhancedData.priceHistory || enhancedData.priceHistory.length === 0) {
+      return { error: "No historical data found" };
+    }
+
+    // Insert historical chart data
+    const historyPayload = enhancedData.priceHistory.map((item: any) => ({
+      product_id: product.id,
+      price: item.price,
+      currency: product.currency || "INR",
+      checked_at: new Date(item.date).toISOString()
+    }));
+
+    const { error: insertErr } = await supabase.from("price_history").insert(historyPayload);
+    if (insertErr) throw insertErr;
+
+    return { success: true, message: "History backfilled successfully" };
+  } catch (error: any) {
+    console.error("Ensure price history error:", error);
+    return { error: error.message };
+  }
+}
+
 export async function testPriceDropEmail(productId) {
   try {
     const cookieStore = await cookies();
