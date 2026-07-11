@@ -32,12 +32,40 @@ export default function AddProductForm({ user }) {
 
     if (result.error) {
       toast.error(result.error);
+      setLoading(false);
     } else {
-      toast.success(result.message || "Product tracked successfully!");
-      setUrl("");
+      toast.info(result.message || "Scraping queued! Please wait...", { duration: 5000 });
+      if (result.job_ids && result.job_ids.length > 0) {
+        // Poll the first job ID to show overall progress (simplified for UI)
+        pollJobStatus(result.job_ids[0]);
+      } else {
+        toast.success("Products tracked successfully!");
+        setUrl("");
+        setLoading(false);
+      }
     }
+  };
 
-    setLoading(false);
+  const pollJobStatus = async (jobId: string) => {
+    try {
+      const res = await fetch(`/api/jobs/${jobId}`);
+      const data = await res.json();
+      
+      if (data.status === "completed") {
+        toast.success("Product scraped and tracked successfully!");
+        setLoading(false);
+        setUrl("");
+      } else if (data.status === "failed") {
+        toast.error(data.error_message || "Failed to scrape product");
+        setLoading(false);
+      } else {
+        // pending or running
+        setTimeout(() => pollJobStatus(jobId), 2000);
+      }
+    } catch (err) {
+      toast.error("Error checking job status");
+      setLoading(false);
+    }
   };
 
   const handleSearch = async (e) => {
@@ -74,12 +102,18 @@ export default function AddProductForm({ user }) {
       const result = await addProduct(formData);
       if (result.error) {
         toast.error(result.error);
+        setLoading(false);
       } else {
-        toast.success(result.message || "Product tracked successfully!");
+        toast.info(result.message || "Scraping queued...");
+        if (result.job_id) {
+          pollJobStatus(result.job_id);
+        } else {
+          toast.success("Product tracked successfully!");
+          setLoading(false);
+        }
       }
     } catch (err) {
       toast.error("An error occurred while tracking the product");
-    } finally {
       setLoading(false);
     }
   };
@@ -133,7 +167,7 @@ export default function AddProductForm({ user }) {
                 {loading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Processing...
+                    Extracting...
                   </>
                 ) : (
                   "Track Price(s)"
