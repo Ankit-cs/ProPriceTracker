@@ -39,3 +39,24 @@ export function cleanAmazonUrl(url: string): string {
     return url;
   }
 }
+
+export function cleanFlipkartUrl(url: string): string {
+  try {
+    const parsedUrl = new URL(url);
+    const pid = parsedUrl.searchParams.get("pid");
+    if (pid) {
+      return `${parsedUrl.origin}${parsedUrl.pathname}?pid=${pid}`;
+    }
+    return url.split("?")[0];
+  } catch(e) {
+    return url.split("?")[0];
+  }
+}
+
+export function cleanMyntraUrl(url: string): string {
+  try {
+    return url.split("?")[0].split("#")[0];
+  } catch(e) {
+    return url.split("?")[0];
+  }
+}
