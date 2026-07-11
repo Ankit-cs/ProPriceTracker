@@ -371,7 +371,7 @@ export async function getProducts() {
       };
     });
 
-    return mergedProducts;
+    return mergedProducts.filter(p => p.is_user_tracking);
   } catch (error) {
     console.error("Get products error:", error);
     return [];

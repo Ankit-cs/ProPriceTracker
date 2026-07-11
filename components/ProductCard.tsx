@@ -348,19 +348,7 @@ export default function ProductCard({ product }) {
 
       {showChart && (
         <CardFooter className="pt-0 flex flex-col items-stretch gap-4">
-          {product.geturl ? (
-            <iframe 
-              src={`https://pricehistoryapp.com/embed/${product.geturl}`} 
-              width="100%" 
-              height="300" 
-              frameBorder={0} 
-              allowTransparency={true} 
-              scrolling="no" 
-              className="rounded-xl border border-line bg-white"
-            ></iframe>
-          ) : (
-            <PriceChart productId={product.id} initialAlertsEnabled={product.alerts_enabled} initialTargetDiscount={product.target_discount_percent} />
-          )}
+          <PriceChart productId={product.id} initialAlertsEnabled={product.alerts_enabled} initialTargetDiscount={product.target_discount_percent} />
           
           <div className="bg-surface-2 rounded-xl p-4 mt-2 border border-line">
             <h4 className="font-semibold text-sm text-ink mb-3 flex items-center gap-1.5">

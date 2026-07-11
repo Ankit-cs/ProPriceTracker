@@ -32,17 +32,25 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    // Fetch products
-    const { data: products, error } = await supabase
-      .from("products")
+    // Fetch products that this user is tracking
+    const { data: trackedRelations, error } = await supabase
+      .from("user_tracked_products")
       .select(`
         *,
-        price_history (*)
+        product:products (
+          *,
+          price_history (*)
+        )
       `)
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false });
+      .eq("user_id", user.id);
 
     if (error) throw error;
+
+    const products = trackedRelations ? trackedRelations.map(r => ({
+      ...r.product,
+      ...r,
+      id: r.product.id // Keep the product id
+    })) : [];
 
     if (format === "pdf") {
       const PDFDocument = (await import('pdfkit')).default;

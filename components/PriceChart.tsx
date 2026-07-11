@@ -234,7 +234,16 @@ export default function PriceChart({
 
         <div className="h-[240px] w-full mb-6">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={data} margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
+            <AreaChart 
+              data={timeRange === "All" ? data : data.filter((d: any) => {
+                const cutoff = new Date();
+                if (timeRange === "30d") cutoff.setDate(cutoff.getDate() - 30);
+                else if (timeRange === "90d") cutoff.setDate(cutoff.getDate() - 90);
+                else if (timeRange === "1y") cutoff.setDate(cutoff.getDate() - 365);
+                return d.rawDate >= cutoff;
+              })} 
+              margin={{ top: 10, right: 0, left: 0, bottom: 0 }}
+            >
               <defs>
                 <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="var(--accent)" stopOpacity={0.3}/>

@@ -20,6 +20,16 @@ export async function getPortfolios() {
     const cookieStore = await cookies();
     const supabase = bypassAuth ? getServiceRoleClient() : createClient(cookieStore);
     
+    let user;
+    if (bypassAuth) {
+      user = await getMockUser();
+    } else {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      user = authUser;
+    }
+
+    if (!user) return [];
+
     const { data, error } = await supabase
       .from("portfolios")
       .select(`
@@ -33,6 +43,7 @@ export async function getPortfolios() {
           )
         )
       `)
+      .eq("user_id", user.id)
       .order("created_at", { ascending: false });
 
     if (error) throw error;
