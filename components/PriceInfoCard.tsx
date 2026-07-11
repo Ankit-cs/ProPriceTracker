@@ -1,7 +1,7 @@
 "use client";
 
 import { LucideIcon } from "lucide-react";
-import { formatPrice } from "@/lib/utils"; // I will make sure this exists or define it here if needed, but wait, ProPriceTracker uses its own formatPrice in ProductCard. I'll just accept a string for `value`.
+// No formatPrice needed, we just accept a string for `value`.
 
 interface Props {
   title: string;
