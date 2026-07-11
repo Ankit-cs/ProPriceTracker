@@ -63,7 +63,15 @@ export default function PriceChart({
 
   useEffect(() => {
     async function loadData() {
-      const history = await getPriceHistory(productId);
+      let history = await getPriceHistory(productId);
+
+      // Trigger backfill if we have no real historical data yet
+      if (!history || history.length <= 1) {
+        const { ensurePriceHistory } = await import("@/app/actions");
+        await ensurePriceHistory(productId);
+        // re-fetch after backfill attempt
+        history = await getPriceHistory(productId);
+      }
 
       if (history && history.length > 0) {
         // Sort history by date ascending
