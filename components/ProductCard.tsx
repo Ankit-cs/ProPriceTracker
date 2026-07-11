@@ -353,8 +353,8 @@ export default function ProductCard({ product }) {
               src={`https://pricehistoryapp.com/embed/${product.geturl}`} 
               width="100%" 
               height="300" 
-              frameBorder="0" 
-              allowTransparency="true" 
+              frameBorder={0} 
+              allowTransparency={true} 
               scrolling="no" 
               className="rounded-xl border border-line bg-white"
             ></iframe>
