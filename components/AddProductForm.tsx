@@ -124,7 +124,24 @@ export default function AddProductForm({ user }) {
         {/* Toggle Mode buttons */}
         <div className="flex justify-center gap-4 mb-4">
           <button
-            onClick={() => setMode("url")}
+            onClick={async () => {
+              setMode("url");
+              try {
+                if (navigator.clipboard && navigator.clipboard.readText) {
+                  const text = await navigator.clipboard.readText();
+                  // Basic check if it looks like a URL
+                  if (text && (text.includes("http://") || text.includes("https://"))) {
+                    setUrl((prev) => {
+                      if (!prev) return text;
+                      if (!prev.includes(text)) return prev + "\n" + text;
+                      return prev;
+                    });
+                  }
+                }
+              } catch (err) {
+                console.error("Failed to read clipboard", err);
+              }
+            }}
             className={`px-4 py-2 rounded-full font-medium text-sm flex items-center gap-2 transition-all ${
               mode === "url"
                 ? "bg-ink text-background shadow-md"
