@@ -4,15 +4,18 @@ import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 import { scrapeProduct } from "@/lib/firecrawl";
 import { scrapeAmazonProduct } from "@/lib/amazon-scraper";
-import { cleanAmazonUrl } from "@/lib/url-cleaner";
+import { trackProduct, ensureWebhookSubscription } from "@/lib/pricewatcha";
+import { cleanAmazonUrl, cleanFlipkartUrl, cleanMyntraUrl } from "@/lib/url-cleaner";
 import { checkRateLimit } from "@/lib/redis";
 import { fetchPriceHistorySlug, getEnhancedPriceData } from "@/lib/price-history-crawler";
 import { searchAmazonProducts } from "@/lib/amazon-search-scraper";
+import { scrapeFlipkartProduct } from "@/lib/flipkart-scraper";
+import { scrapeMyntraProduct } from "@/lib/myntra-scraper";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 
-const BYPASS_AUTH = true; // Bypass authentication for local testing
+const BYPASS_AUTH = false; // Set to true only for local testing (disables auth)
 
 const getServiceRoleClient = () => {
   return createSupabaseClient(
@@ -50,7 +53,13 @@ export async function addProduct(formData) {
   }
 
   const isAmazon = rawUrl.includes("amazon.") || rawUrl.includes("amzn.");
-  const url = isAmazon ? cleanAmazonUrl(rawUrl) : rawUrl;
+  const isFlipkart = rawUrl.includes("flipkart.");
+  const isMyntra = rawUrl.includes("myntra.");
+
+  let url = rawUrl;
+  if (isAmazon) url = cleanAmazonUrl(rawUrl);
+  else if (isFlipkart) url = cleanFlipkartUrl(rawUrl);
+  else if (isMyntra) url = cleanMyntraUrl(rawUrl);
 
   try {
     const cookieStore = await cookies();
@@ -74,7 +83,100 @@ export async function addProduct(formData) {
       return { error: "Too many requests. Please try again in a minute." };
     }
 
-    // Check if product exists globally
+    // Create a background job for scraping
+    const { data: job, error: jobErr } = await supabase
+      .from("scraping_jobs")
+      .insert({
+        url,
+        user_id: user.id,
+        status: "pending"
+      })
+      .select()
+      .single();
+
+    if (jobErr) throw jobErr;
+
+    // Trigger background worker asynchronously without waiting
+    fetch(`${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/api/jobs/worker`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ job_id: job.id })
+    }).catch(console.error);
+
+    return {
+      success: true,
+      job_id: job.id,
+      message: "Scraping job queued! Please wait..."
+    };
+  } catch (error: any) {
+    console.error("Add product error:", error);
+    return { error: error.message || "Failed to add product" };
+  }
+}
+
+export async function addMultipleProducts(formData: FormData) {
+  const rawUrlsString = formData.get("urls") as string;
+  if (!rawUrlsString) return { error: "URLs are required" };
+
+  const rawUrls = rawUrlsString.split(/[\n,]+/).map(u => u.trim()).filter(Boolean);
+  
+  if (rawUrls.length === 0) return { error: "No valid URLs found" };
+  
+  const results = [];
+  const jobIds = [];
+  for (let i = 0; i < rawUrls.length; i++) {
+     const rawUrl = rawUrls[i];
+     const singleFormData = new FormData();
+     singleFormData.append("url", rawUrl);
+     const result = await addProduct(singleFormData);
+     results.push(result);
+     if (result.success && result.job_id) {
+       jobIds.push(result.job_id);
+     }
+  }
+  
+  const successes = results.filter(r => r.success).length;
+  const fails = results.length - successes;
+  
+  if (successes === 0) {
+    return { error: results[0]?.error || "Failed to queue products. Please check the URLs and try again." };
+  }
+
+  return { 
+     success: successes > 0, 
+     job_ids: jobIds,
+     message: `Successfully queued ${successes} products. ${fails > 0 ? `Failed ${fails}.` : ''}` 
+  };
+}
+
+export async function processScrapingJob(job_id: string) {
+  try {
+    const supabase = BYPASS_AUTH ? getServiceRoleClient() : createClient(await cookies());
+
+    // 1. Fetch Job
+    const { data: job, error: jobErr } = await supabase
+      .from("scraping_jobs")
+      .select("*")
+      .eq("id", job_id)
+      .single();
+
+    if (jobErr || !job) {
+      return { error: "Job not found" };
+    }
+
+    if (job.status !== "pending") {
+      return { error: "Job already running or completed" };
+    }
+
+    // Mark running
+    await supabase.from("scraping_jobs").update({ status: "running" }).eq("id", job_id);
+
+    const url = job.url;
+    const isAmazon = url.includes("amazon.") || url.includes("amzn.");
+    const isFlipkart = url.includes("flipkart.");
+    const isMyntra = url.includes("myntra.");
+    
+    // Check if product already exists globally
     const { data: existingProduct } = await supabase
       .from("products")
       .select("id, current_price, lowest_price, highest_price, average_price, original_price")
@@ -83,33 +185,74 @@ export async function addProduct(formData) {
 
     const isUpdate = !!existingProduct;
 
-    // Scrape product data with Amazon Scraper or Firecrawl
+    // Scrape
     let productData;
-    if (isAmazon) {
-      let pincode;
-      if (existingProduct) {
-        const { data: existingJoin } = await supabase
-          .from("user_tracked_products")
-          .select("pincode")
-          .eq("user_id", user.id)
-          .eq("product_id", existingProduct.id)
-          .maybeSingle();
-        pincode = existingJoin?.pincode;
+    try {
+      if (isAmazon) {
+        let pincode;
+        if (existingProduct) {
+          const { data: existingJoin } = await supabase
+            .from("user_tracked_products")
+            .select("pincode")
+            .eq("user_id", job.user_id)
+            .eq("product_id", existingProduct.id)
+            .maybeSingle();
+          pincode = existingJoin?.pincode;
+        }
+        productData = await scrapeAmazonProduct(url, "in", pincode);
+      } else if (isFlipkart) {
+        productData = await scrapeFlipkartProduct(url);
+        // Track async for webhooks/background usage
+        trackProduct(url).catch(() => {});
+        ensureWebhookSubscription().catch(() => {});
+      } else if (isMyntra) {
+        productData = await scrapeMyntraProduct(url);
+        trackProduct(url).catch(() => {});
+        ensureWebhookSubscription().catch(() => {});
+      } else {
+        try {
+          productData = await trackProduct(url);
+        } catch (pwErr) {
+          console.warn("Pricewatcha tracking failed or timed out, falling back to Firecrawl entirely:", pwErr);
+          productData = await scrapeProduct(url);
+          // Note: If Pricewatcha fails, we don't get webhooks, but we still get the product.
+        }
+        
+        try {
+          // Fallback to Firecrawl for rich metadata since Pricewatcha only provides core price
+          // Only do this if we didn't already use Firecrawl as the main scraper
+          if (!productData.productImageUrl || !productData.originalPrice) {
+            const fcData = await scrapeProduct(url);
+            if (fcData.productImageUrl) productData.productImageUrl = fcData.productImageUrl;
+            if (fcData.originalPrice) productData.originalPrice = fcData.originalPrice;
+            if (fcData.rating) productData.rating = fcData.rating;
+            if (fcData.reviewsCount) productData.reviewsCount = fcData.reviewsCount;
+            // Also if trackProduct failed to get currentPrice but didn't throw (unlikely), use fcData
+            if (!productData.currentPrice && fcData.currentPrice) {
+               productData.currentPrice = fcData.currentPrice;
+               productData.productName = fcData.productName;
+            }
+          }
+        } catch (fcErr) {
+          console.warn("Firecrawl enhancement failed:", fcErr);
+        }
+
+        // Register/ensure webhook subscription in the background
+        ensureWebhookSubscription().catch(console.error);
       }
-      productData = await scrapeAmazonProduct(url, "in", pincode);
-    } else {
-      productData = await scrapeProduct(url);
+    } catch (scrapeErr: any) {
+      await supabase.from("scraping_jobs").update({ status: "failed", error_message: scrapeErr.message }).eq("id", job_id);
+      return { error: "Scrape failed" };
     }
 
     if (!productData.productName || !productData.currentPrice) {
-      console.log(productData, "productData");
-      return { error: "Could not extract product information from this URL" };
+      await supabase.from("scraping_jobs").update({ status: "failed", error_message: "Could not extract info" }).eq("id", job_id);
+      return { error: "Extract failed" };
     }
 
     const newPrice = productData.currentPrice;
     const currency = productData.currencyCode || productData.currency || "INR";
 
-    // Recalculate Aggregates
     let lowestPrice = newPrice;
     let highestPrice = newPrice;
     let averagePrice = newPrice;
@@ -158,142 +301,65 @@ export async function addProduct(formData) {
       discount_rate: discountRate,
     };
 
-    if (slug) {
-      updateData.geturl = slug;
-    }
+    if (slug) updateData.geturl = slug;
 
-    if (productData.amazonId !== undefined) {
-      updateData.amazon_id = productData.amazonId;
-      updateData.rating = productData.rating || 0;
-      updateData.reviews_count = productData.reviewsCount || 0;
+    // Assign generic metadata
+    if (productData.rating !== undefined) updateData.rating = productData.rating;
+    if (productData.reviewsCount !== undefined) updateData.reviews_count = productData.reviewsCount;
+    updateData.original_price = originalPrice;
+
+    // Assign Amazon/Flipkart/Myntra specific metadata
+    if (productData.amazonId !== undefined || isFlipkart || isMyntra) {
+      if (productData.amazonId !== undefined) updateData.amazon_id = productData.amazonId;
       updateData.short_description = productData.shortDescription || "";
       updateData.full_description = productData.fullDescription || "";
       updateData.is_amazon_choice = productData.isAmazonChoice || false;
       updateData.is_discounted = productData.isDiscounted || false;
-      updateData.original_price = originalPrice;
+      updateData.sold_by = productData.soldBy || null;
+      updateData.delivery_date = productData.deliveryDate || null;
+      updateData.is_in_stock = productData.isInStock !== undefined ? productData.isInStock : true;
     }
 
-    // Insert or update global product
     let product;
     if (existingProduct) {
-      const { data: updatedProduct, error: updateErr } = await supabase
-        .from("products")
-        .update(updateData)
-        .eq("id", existingProduct.id)
-        .select()
-        .single();
+      const { data: updatedProduct, error: updateErr } = await supabase.from("products").update(updateData).eq("id", existingProduct.id).select().single();
       if (updateErr) throw updateErr;
       product = updatedProduct;
     } else {
-      const { data: insertedProduct, error: insertErr } = await supabase
-        .from("products")
-        .insert(updateData)
-        .select()
-        .single();
+      const { data: insertedProduct, error: insertErr } = await supabase.from("products").insert(updateData).select().single();
       if (insertErr) throw insertErr;
       product = insertedProduct;
     }
 
-    // Insert or update join table for multi-tenant mapping
-    const { error: joinError } = await supabase
-      .from("user_tracked_products")
-      .upsert({
-        user_id: user.id,
-        product_id: product.id,
-        last_notified_price: newPrice,
-      }, {
-        onConflict: "user_id,product_id",
-        ignoreDuplicates: false
-      });
-
-    if (joinError) throw joinError;
-
-    // Always add current price to price history
-    await supabase.from("price_history").insert({
+    // Join table
+    await supabase.from("user_tracked_products").upsert({
+      user_id: job.user_id,
       product_id: product.id,
-      price: newPrice,
-      currency: currency,
-    });
+      last_notified_price: newPrice,
+    }, { onConflict: "user_id,product_id", ignoreDuplicates: false });
 
-    // Populate historical points if database doesn't have any yet (only last 90 days)
-    if (scrapedHistory.length > 0) {
-      const { count } = await supabase
-        .from("price_history")
-        .select("id", { count: "exact", head: true })
-        .eq("product_id", product.id);
+    // Price history
+    await supabase.from("price_history").insert({ product_id: product.id, price: newPrice, currency: currency });
 
-      if (count <= 1) { // 1 because we just inserted the current price above
-        const ninetyDaysAgo = new Date();
-        ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
-
-        const filteredHistory = scrapedHistory.filter(item => {
-          const itemDate = new Date(item.date);
-          return itemDate >= ninetyDaysAgo;
-        });
-
-        if (filteredHistory.length > 0) {
-          const historyInserts = filteredHistory.map(item => ({
-            product_id: product.id,
-            price: item.price,
-            currency: currency,
-            checked_at: new Date(item.date).toISOString(),
-          }));
-          await supabase.from("price_history").insert(historyInserts);
-        }
-      }
+    // Insert historical chart data if we fetched it
+    if (scrapedHistory && scrapedHistory.length > 0) {
+      const historyPayload = scrapedHistory.map(item => ({
+        product_id: product.id,
+        price: item.price,
+        currency: currency,
+        checked_at: new Date(item.date).toISOString()
+      }));
+      await supabase.from("price_history").insert(historyPayload);
     }
 
-    if (!isUpdate && user.email) {
-      const { sendWelcomeAlert } = await import("@/lib/email");
-      sendWelcomeAlert(user.email, product);
-    }
+    // Mark job completed
+    await supabase.from("scraping_jobs").update({ status: "completed", product_id: product.id }).eq("id", job_id);
 
-    revalidatePath("/");
-    return {
-      success: true,
-      product,
-      message: isUpdate
-        ? "Product updated with latest price!"
-        : "Product added successfully!",
-    };
-  } catch (error: any) {
-    console.error("Add product error:", error);
-    return { error: error.message || "Failed to add product" };
+    return { success: true, product };
+  } catch (err: any) {
+    console.error("Worker error:", err);
+    return { error: err.message };
   }
-}
-
-export async function addMultipleProducts(formData: FormData) {
-  const rawUrlsString = formData.get("urls") as string;
-  if (!rawUrlsString) return { error: "URLs are required" };
-
-  const rawUrls = rawUrlsString.split(/[\n,]+/).map(u => u.trim()).filter(Boolean);
-  
-  if (rawUrls.length === 0) return { error: "No valid URLs found" };
-  
-  const results = [];
-  for (let i = 0; i < rawUrls.length; i++) {
-     const rawUrl = rawUrls[i];
-     const singleFormData = new FormData();
-     singleFormData.append("url", rawUrl);
-     const result = await addProduct(singleFormData);
-     results.push(result);
-     
-     if (i < rawUrls.length - 1) {
-       await new Promise(r => setTimeout(r, 3000));
-     }
-  }
-  
-  const successes = results.filter(r => r.success).length;
-  const fails = results.length - successes;
-  
-  if (successes === 0) {
-    return { error: results[0]?.error || "Failed to add products. Please check the URLs and try again." };
-  }
-
-  return { 
-     success: successes > 0, 
-     message: `Successfully added ${successes} products. ${fails > 0 ? `Failed ${fails}.` : ''}` 
-  };
 }
 
 export async function deleteProduct(productId) {
@@ -628,11 +694,21 @@ export async function refreshProductPrice(productId: string) {
       .maybeSingle();
 
     const isAmazon = product.url.includes("amazon.") || product.url.includes("amzn.");
-    const cleanUrl = isAmazon ? cleanAmazonUrl(product.url) : product.url;
+    const isFlipkart = product.url.includes("flipkart.");
+    const isMyntra = product.url.includes("myntra.");
+
+    let cleanUrl = product.url;
+    if (isAmazon) cleanUrl = cleanAmazonUrl(product.url);
+    else if (isFlipkart) cleanUrl = cleanFlipkartUrl(product.url);
+    else if (isMyntra) cleanUrl = cleanMyntraUrl(product.url);
 
     let productData;
     if (isAmazon) {
       productData = await scrapeAmazonProduct(cleanUrl, "in", tracker?.pincode || undefined);
+    } else if (isFlipkart) {
+      productData = await scrapeFlipkartProduct(cleanUrl);
+    } else if (isMyntra) {
+      productData = await scrapeMyntraProduct(cleanUrl);
     } else {
       productData = await scrapeProduct(cleanUrl);
     }
@@ -670,16 +746,21 @@ export async function refreshProductPrice(productId: string) {
       discount_rate: discountRate,
     };
 
-    if (productData.amazonId !== undefined) {
-      updateData.amazon_id = productData.amazonId;
-      updateData.rating = productData.rating || 0;
-      updateData.reviews_count = productData.reviewsCount || 0;
+    // Assign generic metadata
+    if (productData.rating !== undefined) updateData.rating = productData.rating;
+    if (productData.reviewsCount !== undefined) updateData.reviews_count = productData.reviewsCount;
+    updateData.original_price = originalPrice;
+
+    // Assign Amazon/Flipkart/Myntra specific metadata
+    if (productData.amazonId !== undefined || isFlipkart || isMyntra) {
+      if (productData.amazonId !== undefined) updateData.amazon_id = productData.amazonId;
       updateData.short_description = productData.shortDescription || "";
       updateData.full_description = productData.fullDescription || "";
       updateData.is_amazon_choice = productData.isAmazonChoice || false;
       updateData.is_discounted = productData.isDiscounted || false;
-      updateData.original_price = originalPrice;
       updateData.is_in_stock = productData.isInStock !== undefined ? productData.isInStock : true;
+      updateData.sold_by = productData.soldBy || null;
+      updateData.delivery_date = productData.deliveryDate || null;
     }
 
     // Update global product table
@@ -752,3 +833,162 @@ export async function addUserEmailToProduct(productId: string, email: string) {
     return { error: error.message || "Failed to subscribe to product" };
   }
 }
+
+export async function getWebhookUrl() {
+  try {
+    const cookieStore = await cookies();
+    const supabase = BYPASS_AUTH ? getServiceRoleClient() : createClient(cookieStore);
+    
+    let user;
+    if (BYPASS_AUTH) {
+      user = await getMockUser();
+    } else {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      user = authUser;
+    }
+
+    if (!user) {
+      return { error: "Not authenticated" };
+    }
+
+    const { data: userSettings, error } = await supabase
+      .from("user_settings")
+      .select("webhook_url")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (error) throw error;
+    
+    return { success: true, webhookUrl: userSettings?.webhook_url || "" };
+  } catch (error: any) {
+    console.error("Get webhook error:", error);
+    return { error: error.message || "Failed to get webhook" };
+  }
+}
+
+export async function saveWebhookUrl(webhookUrl: string) {
+  try {
+    const cookieStore = await cookies();
+    const supabase = BYPASS_AUTH ? getServiceRoleClient() : createClient(cookieStore);
+    
+    let user;
+    if (BYPASS_AUTH) {
+      user = await getMockUser();
+    } else {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      user = authUser;
+    }
+
+    if (!user) {
+      return { error: "Not authenticated" };
+    }
+
+    const { error } = await supabase
+      .from("user_settings")
+      .upsert({
+        user_id: user.id,
+        webhook_url: webhookUrl
+      }, {
+        onConflict: "user_id"
+      });
+
+    if (error) throw error;
+
+    revalidatePath("/connect");
+    return { success: true };
+  } catch (error: any) {
+    console.error("Save webhook error:", error);
+    return { error: error.message || "Failed to save webhook" };
+  }
+}
+
+export async function uploadAvatar(formData: FormData) {
+  try {
+    const cookieStore = await cookies();
+    const supabase = BYPASS_AUTH ? getServiceRoleClient() : createClient(cookieStore);
+    
+    let user;
+    if (BYPASS_AUTH) {
+      user = await getMockUser();
+    } else {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      user = authUser;
+    }
+
+    if (!user) {
+      return { error: "Not authenticated" };
+    }
+
+    const file = formData.get("file") as File;
+    if (!file) {
+      return { error: "No file provided" };
+    }
+
+    // Generate unique filename
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${user.id}-${Math.random()}.${fileExt}`;
+    const filePath = `${fileName}`;
+
+    // Ensure avatars bucket exists
+    const serviceClient = getServiceRoleClient();
+    const { data: buckets } = await serviceClient.storage.listBuckets();
+    const avatarsBucketExists = buckets?.some(b => b.name === 'avatars');
+    
+    if (!avatarsBucketExists) {
+      await serviceClient.storage.createBucket('avatars', {
+        public: true,
+        fileSizeLimit: 5242880, // 5MB
+      });
+    }
+
+    // Upload to Supabase Storage
+    const { error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(filePath, file);
+
+    if (uploadError) {
+      throw uploadError;
+    }
+
+    // Get public URL
+    const { data: { publicUrl } } = supabase.storage
+      .from('avatars')
+      .getPublicUrl(filePath);
+
+    // Update User Metadata
+    if (!BYPASS_AUTH) {
+      const { error: updateError } = await supabase.auth.updateUser({
+        data: { avatar_url: publicUrl }
+      });
+      if (updateError) throw updateError;
+    } else {
+      // For mock user, just return success since we can't update admin user metadata easily here
+      console.log("Mock user avatar updated to:", publicUrl);
+    }
+
+    revalidatePath("/");
+    return { success: true, avatarUrl: publicUrl };
+  } catch (error: any) {
+    console.error("Upload avatar error:", error);
+    return { error: error.message || "Failed to upload avatar" };
+  }
+}
+
+export async function getProductById(productId: string) {
+  try {
+    const cookieStore = await cookies();
+    const supabase = BYPASS_AUTH ? getServiceRoleClient() : createClient(cookieStore);
+    const { data, error } = await supabase
+      .from("products")
+      .select("*")
+      .eq("id", productId)
+      .single();
+    if (error) throw error;
+    return { success: true, product: data };
+  } catch (error: any) {
+    console.error("Get product by ID error:", error);
+    return { error: error.message || "Failed to fetch product details" };
+  }
+}
+
+
