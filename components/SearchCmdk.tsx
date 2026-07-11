@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Command } from "cmdk";
 import { useRouter } from "next/navigation";
-import { Search, Tag, BarChart2, Calendar, LayoutDashboard } from "lucide-react";
+import { Search, Tag, BarChart2, Calendar, LayoutDashboard, ShoppingBag, FolderTree, Newspaper, Zap, Bot, Link as LinkIcon } from "lucide-react";
 
 export default function SearchCmdk() {
   const [open, setOpen] = useState(false);
@@ -52,6 +52,18 @@ export default function SearchCmdk() {
                 <LayoutDashboard className="w-4 h-4 text-ink-soft" /> Dashboard
               </Command.Item>
               <Command.Item 
+                onSelect={() => runCommand(() => router.push("/deals"))}
+                className="flex items-center gap-2 px-3 py-2 text-sm text-ink hover:bg-ink/5 hover:text-ink rounded-lg cursor-pointer aria-selected:bg-ink/5 aria-selected:text-ink"
+              >
+                <ShoppingBag className="w-4 h-4 text-ink-soft" /> Deals
+              </Command.Item>
+              <Command.Item 
+                onSelect={() => runCommand(() => router.push("/categories"))}
+                className="flex items-center gap-2 px-3 py-2 text-sm text-ink hover:bg-ink/5 hover:text-ink rounded-lg cursor-pointer aria-selected:bg-ink/5 aria-selected:text-ink"
+              >
+                <FolderTree className="w-4 h-4 text-ink-soft" /> Categories
+              </Command.Item>
+              <Command.Item 
                 onSelect={() => runCommand(() => router.push("/compare"))}
                 className="flex items-center gap-2 px-3 py-2 text-sm text-ink hover:bg-ink/5 hover:text-ink rounded-lg cursor-pointer aria-selected:bg-ink/5 aria-selected:text-ink"
               >
@@ -68,6 +80,30 @@ export default function SearchCmdk() {
                 className="flex items-center gap-2 px-3 py-2 text-sm text-ink hover:bg-ink/5 hover:text-ink rounded-lg cursor-pointer aria-selected:bg-ink/5 aria-selected:text-ink"
               >
                 <Calendar className="w-4 h-4 text-ink-soft" /> Sales Calendar & Predictor
+              </Command.Item>
+              <Command.Item 
+                onSelect={() => runCommand(() => router.push("/news"))}
+                className="flex items-center gap-2 px-3 py-2 text-sm text-ink hover:bg-ink/5 hover:text-ink rounded-lg cursor-pointer aria-selected:bg-ink/5 aria-selected:text-ink"
+              >
+                <Newspaper className="w-4 h-4 text-ink-soft" /> News
+              </Command.Item>
+              <Command.Item 
+                onSelect={() => runCommand(() => router.push("/signalist"))}
+                className="flex items-center gap-2 px-3 py-2 text-sm text-ink hover:bg-ink/5 hover:text-ink rounded-lg cursor-pointer aria-selected:bg-ink/5 aria-selected:text-ink"
+              >
+                <Zap className="w-4 h-4 text-ink-soft" /> Dream Setup
+              </Command.Item>
+              <Command.Item 
+                onSelect={() => runCommand(() => router.push("/ai-assistant"))}
+                className="flex items-center gap-2 px-3 py-2 text-sm text-ink hover:bg-ink/5 hover:text-ink rounded-lg cursor-pointer aria-selected:bg-ink/5 aria-selected:text-ink"
+              >
+                <Bot className="w-4 h-4 text-ink-soft" /> AI Assistant
+              </Command.Item>
+              <Command.Item 
+                onSelect={() => runCommand(() => router.push("/connect"))}
+                className="flex items-center gap-2 px-3 py-2 text-sm text-ink hover:bg-ink/5 hover:text-ink rounded-lg cursor-pointer aria-selected:bg-ink/5 aria-selected:text-ink"
+              >
+                <LinkIcon className="w-4 h-4 text-ink-soft" /> Connect
               </Command.Item>
             </Command.Group>
           </Command.List>
