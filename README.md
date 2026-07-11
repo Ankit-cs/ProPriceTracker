@@ -24,6 +24,8 @@ ProPriceTracker is an intelligent and automated price tracking application that 
 - **[NEW] PriceHistoryApp Embedded Visuals:** Displays the interactive historical graph iframe on product card footers as an additional option.
 - **[NEW] Global Alternative Deals Feed:** Surfaces top discounted items tracked globally by the community at the bottom of the Price Drops page.
 - **[NEW] Resilient Parsers & Cleaners:** Strips messy tracking parameters from URLs and parses international currency symbols (including Indian Lakhs) safely.
+- **[NEW] Smart Notification Decision Engine:** Advanced cron logic that intelligently prioritizes email alerts (e.g., distinguishing an All-Time Low vs. a Target Threshold vs. a standard drop) to prevent notification fatigue.
+- **[NEW] Embedded Email Charts:** Automatically generates and embeds static QuickChart visual graphs of a product's 14-day price history directly inside the email alerts so users never have to leave their inbox.
 
 ## Architecture Flow
 
