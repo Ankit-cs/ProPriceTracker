@@ -9,32 +9,32 @@ ProPriceTracker is an intelligent and automated price tracking application that 
 - **Universal Tracking:** Monitor items from Amazon (using ScrapingAnt) and other sites like BestBuy, Zara, Walmart (via Firecrawl).
 - **Detailed Amazon Metadata:** Extracts and displays star ratings, review counts, popularity scores, choice badges, ASIN numbers, and collapsible features/descriptions.
 - **Price Trends & Alerts:** Visualize history with interactive charts, toggle price alerts, and receive email notifications on price drops.
-- **[NEW] Signalist Trading Desk:** Build "Dream Setups" (Portfolios) with real-time price tracking. Includes technical indicators like Moving Average, Volatility %, Sentiment Scores, and "Buy/Wait" signals for products.
-- **[NEW] Real-time Flashes:** UI instantly flashes green or red via Supabase WebSockets the moment a price changes in the backend.
-- **[NEW] Serverless AI Assistant:** A built-in AI chat that uses natural language processing (`sentiment` package) to analyze your questions, combining your emotional tone with historical price averages to give personalized "Buy Now" or "Wait" signals. Pure TypeScript, no Python backend required!
-- **[NEW] Hero Carousel:** Beautiful interactive product showcase on the landing page.
+- **Signalist Trading Desk:** Build "Dream Setups" (Portfolios) with real-time price tracking. Includes technical indicators like Moving Average, Volatility %, Sentiment Scores, and "Buy/Wait" signals for products.
+- **Real-time Flashes:** UI instantly flashes green or red via Supabase WebSockets the moment a price changes in the backend.
+- **Serverless AI Assistant:** A built-in AI chat that uses natural language processing (`sentiment` package) to analyze your questions, combining your emotional tone with historical price averages to give personalized "Buy Now" or "Wait" signals. Pure TypeScript, no Python backend required!
+- **Hero Carousel:** Beautiful interactive product showcase on the landing page.
 - **Dynamic Auth / Dev Bypass:** Secure Google OAuth integration, with a built-in `BYPASS_AUTH` toggle for frictionless local sandbox testing.
 - **Automated Checks:** Daily cron jobs check tracked products and notify users of drop alerts.
-- **[NEW] Export to PDF:** Easily generate and download a clean PDF report containing all tracked products, their descriptions, and thumbnail images.
-- **[NEW] Location-Based Delivery Details:** Enter a specific Pincode for any Amazon product directly on its card to fetch accurate, real-time Delivery Dates and "Sold By" merchant data.
-- **[NEW] Multi-Tenant Scaling Optimization:** Products are stored globally unique in the database and mapped to users, reducing total scraping calls and database bloat by over 90%.
-- **[NEW] API Rate Limiting Protection:** Integrated `@upstash/ratelimit` via Upstash Redis to restrict spam requests on product tracks and organic search routes.
-- **[NEW] Google Shopping Search:** Users can search products by name directly via SerpAPI instead of pasting raw URLs, tracking matching items instantly.
-- **[NEW] Day 1 Price History Syncer:** Crawls Google for a product's PriceHistoryApp slug on Day 1, parsing and bulk-saving the last 90 days of historical date-price data into your database.
-- **[NEW] PriceHistoryApp Embedded Visuals:** Displays the interactive historical graph iframe on product card footers as an additional option.
-- **[NEW] Global Alternative Deals Feed:** Surfaces top discounted items tracked globally by the community at the bottom of the Price Drops page.
-- **[NEW] Resilient Parsers & Cleaners:** Strips messy tracking parameters from URLs and parses international currency symbols (including Indian Lakhs) safely.
-- **[NEW] Smart Notification Decision Engine:** Advanced cron logic that intelligently prioritizes email alerts (e.g., distinguishing an All-Time Low vs. a Target Threshold vs. a standard drop) to prevent notification fatigue.
-- **[NEW] Embedded Email Charts:** Automatically generates and embeds static QuickChart visual graphs of a product's 14-day price history directly inside the email alerts so users never have to leave their inbox.
-- **[NEW] Native Flipkart Scraper:** Dedicated custom scraper (`lib/flipkart-scraper.ts`) using Axios + Cheerio that extracts full product metadata — title, current price, MRP, product image, star rating, review count, seller name, and delivery date — from Flipkart pages without Firecrawl, eliminating 500 timeout errors.
-- **[NEW] Native Myntra Scraper:** Dedicated scraper (`lib/myntra-scraper.ts`) that calls Myntra's internal product gateway JSON API (`/gateway/v2/product/{id}`) directly, bypassing all anti-bot HTML blocking. Returns rich data including high-res images, discounted price, MRP, seller, and availability status.
-- **[NEW] Smart Platform Router:** `app/actions.tsx` automatically detects the URL domain on product add and routes Amazon → ScrapingAnt, Flipkart → custom native scraper, Myntra → gateway API scraper, and other sites → Firecrawl. Zero manual selection needed.
-- **[NEW] URL Cleaners for All Platforms:** `lib/url-cleaner.ts` strips all tracking/UTM parameters from Amazon, Flipkart, and Myntra URLs, saving canonical versions to the database for accurate de-duplication.
-- **[NEW] Day 1 Price History Bulk Importer:** When a brand-new product is first tracked, the app fetches its slug from `pricehistoryapp.com` via SerpAPI and bulk-imports all historical date-price data into `price_history`, populating the chart from Day 1 for all platforms.
-- **[NEW] Pricewatcha Webhook Integration:** Registers products with Pricewatcha in the background for passive webhook-driven price drop alerts, without blocking the main scrape flow.
-- **[NEW] Resilient Image Extraction:** Multi-layered image extraction with CSS class fallbacks, `og:image` meta fallback, and a generic `img[src]` scan — ensures product images are always saved even when site markup changes.
+- **Export to PDF:** Easily generate and download a clean PDF report containing all tracked products, their descriptions, and thumbnail images.
+- **Location-Based Delivery Details:** Enter a specific Pincode for any Amazon product directly on its card to fetch accurate, real-time Delivery Dates and "Sold By" merchant data.
+- **Multi-Tenant Scaling Optimization:** Products are stored globally unique in the database and mapped to users, reducing total scraping calls and database bloat by over 90%.
+- **API Rate Limiting Protection:** Integrated `@upstash/ratelimit` via Upstash Redis to restrict spam requests on product tracks and organic search routes.
+- **Google Shopping Search:** Users can search products by name directly via SerpAPI instead of pasting raw URLs, tracking matching items instantly.
+- **Day 1 Price History Syncer:** Crawls Google for a product's PriceHistoryApp slug on Day 1, parsing and bulk-saving the last 90 days of historical date-price data into your database.
+- **PriceHistoryApp Embedded Visuals:** Displays the interactive historical graph iframe on product card footers as an additional option.
+- **Global Alternative Deals Feed:** Surfaces top discounted items tracked globally by the community at the bottom of the Price Drops page.
+- **Resilient Parsers & Cleaners:** Strips messy tracking parameters from URLs and parses international currency symbols (including Indian Lakhs) safely.
+- **Smart Notification Decision Engine:** Advanced cron logic that intelligently prioritizes email alerts (e.g., distinguishing an All-Time Low vs. a Target Threshold vs. a standard drop) to prevent notification fatigue.
+- **Embedded Email Charts:** Automatically generates and embeds static QuickChart visual graphs of a product's 14-day price history directly inside the email alerts so users never have to leave their inbox.
+- **Native Flipkart Scraper:** Dedicated custom scraper (`lib/flipkart-scraper.ts`) using Axios + Cheerio that extracts full product metadata — title, current price, MRP, product image, star rating, review count, seller name, and delivery date — from Flipkart pages without Firecrawl, eliminating 500 timeout errors.
+- **Native Myntra Scraper:** Dedicated scraper (`lib/myntra-scraper.ts`) that calls Myntra's internal product gateway JSON API (`/gateway/v2/product/{id}`) directly, bypassing all anti-bot HTML blocking. Returns rich data including high-res images, discounted price, MRP, seller, and availability status.
+- **Smart Platform Router:** `app/actions.tsx` automatically detects the URL domain on product add and routes Amazon → ScrapingAnt, Flipkart → custom native scraper, Myntra → gateway API scraper, and other sites → Firecrawl. Zero manual selection needed.
+- **URL Cleaners for All Platforms:** `lib/url-cleaner.ts` strips all tracking/UTM parameters from Amazon, Flipkart, and Myntra URLs, saving canonical versions to the database for accurate de-duplication.
+- **Day 1 Price History Bulk Importer:** When a brand-new product is first tracked, the app fetches its slug from `pricehistoryapp.com` via SerpAPI and bulk-imports all historical date-price data into `price_history`, populating the chart from Day 1 for all platforms.
+- **Pricewatcha Webhook Integration:** Registers products with Pricewatcha in the background for passive webhook-driven price drop alerts, without blocking the main scrape flow.
+- **Resilient Image Extraction:** Multi-layered image extraction with CSS class fallbacks, `og:image` meta fallback, and a generic `img[src]` scan — ensures product images are always saved even when site markup changes.
 
-## Architecture Flow
+## Architecture A: Product Tracking Flow
 
 ```mermaid
 sequenceDiagram
@@ -46,7 +46,6 @@ sequenceDiagram
     participant MY as Myntra Gateway API
     participant F as Firecrawl (General Scraper)
     participant PW as Pricewatcha (Webhooks)
-    participant R as Resend (Email)
     participant E as E-Commerce Site
 
     U->>A: Adds Product URL
@@ -72,11 +71,22 @@ sequenceDiagram
     A->>PW: Register webhook (background, non-blocking)
     S-->>A: Confirm Storage
     A-->>U: Render Dashboard Card
+```
 
-    Note over S,E: Daily Cron Job Flow
+## Architecture B: Daily Cron Alerts Flow
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant A as ProPriceTracker (Next.js)
+    participant S as Supabase (DB & Auth)
+    participant SA as ScrapingAnt (Amazon Scraper)
+    participant R as Resend (Email)
+    
+    Note over S,SA: Daily Cron Job Flow
     S->>A: Trigger /api/cron/check-prices
-    A->>SA/FK/MY/F: Scrape updated prices (per platform)
-    SA/FK/MY/F-->>A: New Prices
+    A->>SA: Scrape updated prices (per platform)
+    SA-->>A: New Prices
     A->>S: Update DB & History
     alt Price Dropped & Alerts Enabled
         A->>R: Trigger Email Alert (with embedded chart)
@@ -102,14 +112,14 @@ The **Signalist Trading Desk** is an advanced sub-module designed for users who 
 
 - **Frontend:** Next.js (App Router), React, Tailwind CSS, shadcn/ui, Recharts
 - **Backend:** Next.js Server Actions & API Routes, Supabase (PostgreSQL, pg_cron), Upstash Redis (Rate Limiting via `@upstash/ratelimit`), SerpAPI (Shopping Search client)
-- **[NEW] Side-by-Side Product Comparison**: Select up to 3 products to compare their prices, ratings, and features simultaneously using a persistent Zustand store.
-- **[NEW] Signalist Trading Desk**: Build custom portfolios and get live AI-driven "Buy/Wait" signals, complete with optimistic instant UI updates for adding/removing items.
-- **[NEW] Deep Discount Dashboard**: A dedicated interface that exclusively surfaces items currently on sale, sorted by the highest discount percentage.
-- **[NEW] Sales Calendar & Savings Predictor**: An interactive tool that calculates potential savings by delaying purchases until major upcoming e-commerce events (e.g., Prime Day, Black Friday).
-- **[NEW] Intelligent "Product Details" Parser**: Automatically scrapes the "Technical Details" section from Amazon into a structured JSON map (Key-Value pairs), stripping out messy HTML and emojis.
-- **[NEW] Command Palette (⌘K)**: Instantly jump between features using the global `cmdk` search menu.
-- **[NEW] PDF Generation**: Uses `pdfkit` to generate rich, well-formatted PDF reports of tracked products directly from the API routes.
-- **[NEW] Location-Aware Scraping**: Injects a base64-encoded JS snippet into the ScrapingAnt engine to interact with Amazon's location popover, enabling accurate extraction of region-specific delivery data.
+- **Side-by-Side Product Comparison**: Select up to 3 products to compare their prices, ratings, and features simultaneously using a persistent Zustand store.
+- **Signalist Trading Desk**: Build custom portfolios and get live AI-driven "Buy/Wait" signals, complete with optimistic instant UI updates for adding/removing items.
+- **Deep Discount Dashboard**: A dedicated interface that exclusively surfaces items currently on sale, sorted by the highest discount percentage.
+- **Sales Calendar & Savings Predictor**: An interactive tool that calculates potential savings by delaying purchases until major upcoming e-commerce events (e.g., Prime Day, Black Friday).
+- **Intelligent "Product Details" Parser**: Automatically scrapes the "Technical Details" section from Amazon into a structured JSON map (Key-Value pairs), stripping out messy HTML and emojis.
+- **Command Palette (⌘K)**: Instantly jump between features using the global `cmdk` search menu.
+- **PDF Generation**: Uses `pdfkit` to generate rich, well-formatted PDF reports of tracked products directly from the API routes.
+- **Location-Aware Scraping**: Injects a base64-encoded JS snippet into the ScrapingAnt engine to interact with Amazon's location popover, enabling accurate extraction of region-specific delivery data.
 - **Extraction APIs:** 
   - **ScrapingAnt Client:** Advanced Amazon scraper using regional proxy routing (US, IN, GB, DE, FR, JP) and automatic bot-detection bypass.
   - **Firecrawl Client:** General e-commerce scraper for other sites.
@@ -168,11 +178,11 @@ ProPriceTracker/
 │   ├── firecrawl.ts              # Firecrawl API scraper integration
 │   ├── amazon-scraper.ts         # Amazon detail scraper using ScrapingAnt & URL canonical cleaner
 │   ├── amazon-search-scraper.ts  # Amazon search-list scraper for comparison views
-│   ├── flipkart-scraper.ts       # [NEW] Native Flipkart scraper (Axios + Cheerio)
-│   ├── myntra-scraper.ts         # [NEW] Myntra scraper via internal gateway JSON API
-│   ├── url-cleaner.ts            # [NEW] URL canonicalizer for Amazon, Flipkart & Myntra
-│   ├── pricewatcha.ts            # [NEW] Pricewatcha webhook registration client
-│   ├── price-history-crawler.ts  # [NEW] Day-1 price history fetcher via SerpAPI + pricehistoryapp.com
+│   ├── flipkart-scraper.ts       # Native Flipkart scraper (Axios + Cheerio)
+│   ├── myntra-scraper.ts         # Myntra scraper via internal gateway JSON API
+│   ├── url-cleaner.ts            # URL canonicalizer for Amazon, Flipkart & Myntra
+│   ├── pricewatcha.ts            # Pricewatcha webhook registration client
+│   ├── price-history-crawler.ts  # Day-1 price history fetcher via SerpAPI + pricehistoryapp.com
 │   ├── redis.ts                  # Upstash Redis rate limiting client
 │   └── utils.ts                  # Class merger helpers
 └── utils/                        # Utilities and Supabase clients
