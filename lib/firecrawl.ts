@@ -8,7 +8,11 @@ export interface ScrapedProduct {
   productName: string;
   currentPrice: number;
   currencyCode?: string;
+  currency?: string;
   productImageUrl?: string;
+  originalPrice?: number;
+  rating?: number;
+  reviewsCount?: number;
 }
 
 export async function scrapeProduct(url: string): Promise<ScrapedProduct> {
@@ -20,7 +24,7 @@ export async function scrapeProduct(url: string): Promise<ScrapedProduct> {
         formats: [{
           type: "json",
           prompt:
-            "Extract the product name as 'productName', current price as a number in INR as 'currentPrice', currency code (must be 'INR') as 'currencyCode', and product image URL as 'productImageUrl' if available",
+            "Extract the product name as 'productName', current price as a number in INR as 'currentPrice', currency code (must be 'INR') as 'currencyCode', product image URL as 'productImageUrl' if available. Also extract the original price (MRP) before discount as 'originalPrice', the product rating out of 5 as 'rating', and the total number of reviews as 'reviewsCount'.",
           schema: {
             type: "object",
             properties: {
@@ -28,6 +32,9 @@ export async function scrapeProduct(url: string): Promise<ScrapedProduct> {
               currentPrice: { type: "number" },
               currencyCode: { type: "string" },
               productImageUrl: { type: "string" },
+              originalPrice: { type: "number" },
+              rating: { type: "number" },
+              reviewsCount: { type: "number" }
             },
             required: ["productName", "currentPrice"],
           },
