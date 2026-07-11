@@ -12,7 +12,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 
-const BYPASS_AUTH = false; // Bypass authentication for local testing
+const BYPASS_AUTH = true; // Bypass authentication for local testing
 
 const getServiceRoleClient = () => {
   return createSupabaseClient(
@@ -700,5 +700,55 @@ export async function refreshProductPrice(productId: string) {
   } catch (error: any) {
     console.error("Refresh product price error:", error);
     return { error: error.message || "Failed to refresh product" };
+  }
+}
+
+export async function addUserEmailToProduct(productId: string, email: string) {
+  try {
+    const cookieStore = await cookies();
+    const supabase = BYPASS_AUTH ? getServiceRoleClient() : createClient(cookieStore);
+    
+    let user;
+    if (BYPASS_AUTH) {
+      user = await getMockUser();
+    } else {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      user = authUser;
+    }
+
+    if (!user) {
+      return { error: "Not authenticated" };
+    }
+
+    const { data: product } = await supabase
+      .from("products")
+      .select("*")
+      .eq("id", productId)
+      .single();
+      
+    if (!product) return { error: "Product not found" };
+
+    const { error: joinError } = await supabase
+      .from("user_tracked_products")
+      .upsert({
+        user_id: user.id,
+        product_id: productId,
+        alerts_enabled: true,
+        last_notified_price: product.current_price,
+      }, {
+        onConflict: "user_id,product_id",
+        ignoreDuplicates: false
+      });
+
+    if (joinError) throw joinError;
+
+    const { sendWelcomeAlert } = await import("@/lib/email");
+    await sendWelcomeAlert(email, product);
+
+    revalidatePath("/");
+    return { success: true, message: "Successfully subscribed to alerts!" };
+  } catch (error: any) {
+    console.error("Add email to product error:", error);
+    return { error: error.message || "Failed to subscribe to product" };
   }
 }
