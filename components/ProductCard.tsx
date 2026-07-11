@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRealtimePrice } from "@/hooks/useRealtimePrice";
-import { deleteProduct, updateProductPincode } from "@/app/actions";
+import { deleteProduct, updateProductPincode, refreshProductPrice } from "@/app/actions";
 import { getTieredRecommendation } from "@/lib/ai-recommendations";
 import { toast } from "sonner";
 import PriceChart from "./PriceChart";
@@ -28,7 +28,8 @@ import {
   Truck,
   Store,
   Loader2,
-  ArrowRight
+  ArrowRight,
+  RefreshCw
 } from "lucide-react";
 import Link from "next/link";
 
@@ -56,7 +57,24 @@ export default function ProductCard({ product }) {
   const [pincode, setPincode] = useState(product.pincode || "");
   const [updatingPincode, setUpdatingPincode] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [stats, setStats] = useState({ signal: 'Neutral', sentiment: { score: 0, label: 'Neutral' } });
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      const result = await refreshProductPrice(product.id);
+      if (result.error) {
+        toast.error(result.error);
+      } else {
+        toast.success("Product price refreshed successfully!");
+      }
+    } catch (e: any) {
+      toast.error(e.message || "Failed to refresh product");
+    } finally {
+      setRefreshing(false);
+    }
+  };
   
   const { livePrice, flashColor } = useRealtimePrice(product.id, product.current_price);
 
@@ -316,11 +334,26 @@ export default function ProductCard({ product }) {
             variant="ghost"
             size="sm"
             onClick={handleDelete}
-            disabled={deleting}
+            disabled={deleting || refreshing}
             className="text-red-600 hover:text-red-700 hover:bg-red-50 gap-1"
           >
             <Trash2 className="w-4 h-4" />
             Remove
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={deleting || refreshing}
+            className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 border-indigo-200 hover:border-indigo-300 gap-1 ml-auto"
+          >
+            {refreshing ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <RefreshCw className="w-4 h-4" />
+            )}
+            {refreshing ? "Refreshing..." : "Refresh"}
           </Button>
         </div>
 

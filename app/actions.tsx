@@ -589,3 +589,116 @@ export async function updateProductPincode(productId: string, url: string, pinco
   revalidatePath("/");
   return { success: true, product };
 }
+
+export async function refreshProductPrice(productId: string) {
+  try {
+    const cookieStore = await cookies();
+    const bypassAuth = await isBypassAuthEnabled();
+    const supabase = bypassAuth ? getServiceRoleClient() : createClient(cookieStore);
+
+    let user;
+    if (bypassAuth) {
+      user = await getMockUser();
+    } else {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      user = authUser;
+    }
+
+    if (!user) {
+      return { error: "Not authenticated" };
+    }
+
+    // Get the product URL and existing details
+    const { data: product, error: fetchError } = await supabase
+      .from("products")
+      .select("*")
+      .eq("id", productId)
+      .single();
+
+    if (fetchError || !product) {
+      return { error: "Product not found" };
+    }
+
+    // Get pincode if available for this tracker to scrape delivery info too
+    const { data: tracker } = await supabase
+      .from("user_tracked_products")
+      .select("pincode")
+      .eq("user_id", user.id)
+      .eq("product_id", productId)
+      .maybeSingle();
+
+    const isAmazon = product.url.includes("amazon.") || product.url.includes("amzn.");
+    const cleanUrl = isAmazon ? cleanAmazonUrl(product.url) : product.url;
+
+    let productData;
+    if (isAmazon) {
+      productData = await scrapeAmazonProduct(cleanUrl, "in", tracker?.pincode || undefined);
+    } else {
+      productData = await scrapeProduct(cleanUrl);
+    }
+
+    if (!productData.currentPrice) {
+      return { error: "Could not extract product information" };
+    }
+
+    const newPrice = productData.currentPrice;
+    const originalPrice = productData.originalPrice || parseFloat(product.original_price || 0);
+
+    // Calculate Aggregates
+    const lowestPrice = Math.min(parseFloat(product.lowest_price || newPrice), newPrice);
+    const highestPrice = Math.max(parseFloat(product.highest_price || newPrice), newPrice);
+
+    const { data: history } = await supabase
+      .from("price_history")
+      .select("price")
+      .eq("product_id", productId);
+
+    const historyPrices = history ? history.map(h => parseFloat(h.price)) : [];
+    const sum = historyPrices.reduce((acc, p) => acc + p, 0) + newPrice;
+    const averagePrice = sum / (historyPrices.length + 1);
+    const discountRate = originalPrice > 0 ? ((originalPrice - newPrice) / originalPrice) * 100 : 0;
+
+    const updateData: any = {
+      current_price: newPrice,
+      currency: productData.currency || product.currency,
+      name: productData.productName || product.name,
+      image_url: productData.productImageUrl || product.image_url,
+      updated_at: new Date().toISOString(),
+      lowest_price: lowestPrice,
+      highest_price: highestPrice,
+      average_price: averagePrice,
+      discount_rate: discountRate,
+    };
+
+    if (productData.amazonId !== undefined) {
+      updateData.amazon_id = productData.amazonId;
+      updateData.rating = productData.rating || 0;
+      updateData.reviews_count = productData.reviewsCount || 0;
+      updateData.short_description = productData.shortDescription || "";
+      updateData.full_description = productData.fullDescription || "";
+      updateData.is_amazon_choice = productData.isAmazonChoice || false;
+      updateData.is_discounted = productData.isDiscounted || false;
+      updateData.original_price = originalPrice;
+      updateData.is_in_stock = productData.isInStock !== undefined ? productData.isInStock : true;
+    }
+
+    // Update global product table
+    await supabase
+      .from("products")
+      .update(updateData)
+      .eq("id", productId);
+
+    // Store new check in price history
+    await supabase.from("price_history").insert({
+      product_id: productId,
+      price: newPrice,
+      currency: productData.currency || product.currency,
+    });
+
+    revalidatePath("/");
+    return { success: true, newPrice };
+  } catch (error: any) {
+    console.error("Refresh product price error:", error);
+    return { error: error.message || "Failed to refresh product" };
+  }
+}
