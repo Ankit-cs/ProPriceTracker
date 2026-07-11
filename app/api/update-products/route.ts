@@ -17,12 +17,17 @@ export async function GET() {
 
     if (productsError) throw productsError;
 
-    console.log(`[Update API] Found ${products.length} products to update`);
+    // Filter to only include Amazon products (non-Amazon are updated via Pricewatcha Webhooks)
+    const amazonProducts = (products || []).filter(product => 
+      product.url.includes("amazon.") || product.url.includes("amzn.")
+    );
+
+    console.log(`[Update API] Found ${amazonProducts.length} Amazon products to update`);
 
     const updated = [];
     const failed = [];
 
-    for (const product of products) {
+    for (const product of amazonProducts) {
       try {
         console.log(`[Update API] Scraping product: ${product.name} (${product.url})`);
         
