@@ -73,14 +73,14 @@ export default function Header({ user }) {
               <button 
                 onClick={() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))}
                 aria-label="Search" 
-                className="hidden md:flex items-center gap-2 h-9 pl-3 pr-2 rounded-full text-[12.5px] text-ink-muted hover:text-ink transition-all border border-line/60 hover:border-ink/30 hover:bg-surface-2/60 cursor-pointer"
+                className="flex items-center gap-2 h-9 pl-3 pr-2 rounded-full text-[12.5px] text-ink-muted hover:text-ink transition-all border border-line/60 hover:border-ink/30 hover:bg-surface-2/60 cursor-pointer"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <path d="m21 21-4.34-4.34"></path>
                   <circle cx="11" cy="11" r="8"></circle>
                 </svg>
                 <span>Search</span>
-                <kbd className="ml-1 text-[10px] font-medium px-1.5 py-0.5 rounded bg-surface-3 text-ink-soft">⌘K</kbd>
+                <kbd className="ml-1 text-[10px] font-medium px-1.5 py-0.5 rounded bg-surface-3 text-ink-soft hidden sm:inline-block">⌘K</kbd>
               </button>
             )}
             <AuthButton user={user} />
