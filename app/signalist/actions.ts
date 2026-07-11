@@ -156,8 +156,16 @@ export async function addURLToPortfolio(portfolioId: string, formData: FormData)
       return { error: result.error };
     }
     
-    if (result.product && result.product.id) {
-      return await addPortfolioItem(portfolioId, result.product.id);
+    if (result.job_id) {
+      // It's a background job, but for the portfolio we need the product immediately.
+      // We can force process it now to get the product ID.
+      const { processScrapingJob } = await import("@/app/actions");
+      const jobResult = await processScrapingJob(result.job_id);
+      
+      if (jobResult.success && jobResult.product?.id) {
+        return await addPortfolioItem(portfolioId, jobResult.product.id);
+      }
+      return { error: jobResult.error || "Failed to process scraping job" };
     }
     
     return { error: "Failed to create product from URL" };
