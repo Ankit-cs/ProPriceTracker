@@ -25,6 +25,8 @@ const getServiceRoleClient = () => {
 };
 
 export async function getMockUser() {
+  if (!BYPASS_AUTH) return null;
+  
   try {
     const supabase = getServiceRoleClient();
     const { data: { users } } = await supabase.auth.admin.listUsers();
@@ -1051,6 +1053,7 @@ export async function uploadAvatar(formData: FormData) {
   }
 }
 
+
 export async function getProductById(productId: string) {
   try {
     const cookieStore = await cookies();
@@ -1068,4 +1071,82 @@ export async function getProductById(productId: string) {
   }
 }
 
+export async function addSiteReview(rating: number, content: string) {
+  try {
+    const cookieStore = await cookies();
+    const supabase = BYPASS_AUTH ? getServiceRoleClient() : createClient(cookieStore);
+    
+    let user;
+    if (BYPASS_AUTH) {
+      user = await getMockUser();
+    } else {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      user = authUser;
+    }
 
+    if (!user) {
+      return { error: "Not authenticated" };
+    }
+
+    const { data, error } = await supabase
+      .from("site_reviews")
+      .insert({
+        user_id: user.id,
+        rating,
+        content
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    
+    revalidatePath("/");
+    return { success: true, review: data };
+  } catch (error: any) {
+    console.error("Add site review error:", error);
+    return { error: error.message || "Failed to add review" };
+  }
+}
+
+export async function getSiteReviews(limit = 20) {
+  try {
+    const supabaseAdmin = getServiceRoleClient();
+    
+    const { data: reviews, error } = await supabaseAdmin
+      .from("site_reviews")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(limit);
+
+    if (error) throw error;
+    
+    if (!reviews || reviews.length === 0) return [];
+
+    const { data: usersData } = await supabaseAdmin.auth.admin.listUsers();
+    const userMap = new Map((usersData?.users || []).map(u => [u.id, u]));
+
+    return reviews.map(review => {
+      const u = userMap.get(review.user_id);
+      const email = u?.email || "Anonymous";
+      const name = u?.user_metadata?.full_name || u?.user_metadata?.name || null;
+      const avatarUrl = u?.user_metadata?.avatar_url || null;
+
+      let maskedEmail = email;
+      if (email.includes("@")) {
+        const [local, domain] = email.split("@");
+        maskedEmail = local.length > 1 
+          ? `${local[0]}***@${domain}` 
+          : `*@${domain}`;
+      }
+
+      return {
+        ...review,
+        author: name || maskedEmail,
+        avatar_url: avatarUrl
+      };
+    });
+  } catch (error) {
+    console.error("Get site reviews error:", error);
+    return [];
+  }
+}

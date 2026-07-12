@@ -1,9 +1,10 @@
 import { createClient } from "@/utils/supabase/server";
 import { cookies } from "next/headers";
-import { getProducts, getMockUser } from "./actions";
+import { getProducts, getMockUser, getSiteReviews } from "./actions";
 import AddProductForm from "@/components/AddProductForm";
 import ProductCard from "@/components/ProductCard";
 import HeroCarousel from "@/components/HeroCarousel";
+import SiteReviews from "@/components/SiteReviews";
 import { TrendingDown, Shield, Bell, Rabbit } from "lucide-react";
 import Image from "next/image";
 
@@ -20,6 +21,7 @@ export default async function Home() {
   }
 
   const products = user ? await getProducts() : [];
+  const reviews = await getSiteReviews();
 
   const FEATURES = [
     
@@ -121,6 +123,11 @@ export default async function Home() {
           </div>
         </section>
       )}
+
+      {/* Site Reviews */}
+      <section className="relative z-10 border-t border-line mt-12 bg-surface/50">
+        <SiteReviews user={user} initialReviews={reviews} />
+      </section>
     </main>
   );
 }
