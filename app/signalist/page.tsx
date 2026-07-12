@@ -4,6 +4,7 @@ import { getProducts, getPriceHistory } from "@/app/actions";
 import PortfolioCard from "@/components/Signalist/PortfolioCard";
 import { calculateVolatility, calculateMovingAverage, getSignal } from "@/lib/signalist-utils";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import SubmitButton from "@/components/Signalist/SubmitButton";
 import { Badge } from "@/components/ui/badge";
 import { TrendingUp, Activity, BarChart3, Zap } from "lucide-react";
 
@@ -58,9 +59,7 @@ export default async function SignalistPage() {
                 className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                 required 
               />
-              <button type="submit" className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring bg-primary text-primary-foreground shadow hover:bg-primary/90 h-9 px-4 py-2">
-                Create
-              </button>
+              <SubmitButton />
             </form>
           </div>
           
