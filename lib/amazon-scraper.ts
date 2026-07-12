@@ -333,7 +333,7 @@ async function scrapeWithScrapingAnt(url: string, initialCountryCode: string, pi
         retry(error);
       }
     },
-    { retries: 3, factor: 1.5, minTimeout: 2000 }
+    { retries: 0, minTimeout: 1000 }
   );
 }
 

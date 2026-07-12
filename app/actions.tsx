@@ -271,17 +271,19 @@ export async function processScrapingJob(job_id: string) {
     let scrapedHistory = [];
 
     if (existingProduct) {
-      lowestPrice = Math.min(parseFloat(existingProduct.lowest_price || newPrice), newPrice);
-      highestPrice = Math.max(parseFloat(existingProduct.highest_price || newPrice), newPrice);
-      
       const { data: history } = await supabase
         .from("price_history")
         .select("price")
         .eq("product_id", existingProduct.id);
       
-      if (history && history.length > 0) {
-        const sum = history.reduce((acc, item) => acc + parseFloat(item.price), 0) + newPrice;
-        averagePrice = sum / (history.length + 1);
+      const historyPrices = history ? history.map(h => parseFloat(h.price)) : [];
+      const allPrices = [...historyPrices, newPrice].filter(p => !isNaN(p) && p > 0);
+      
+      if (allPrices.length > 0) {
+        lowestPrice = Math.min(...allPrices);
+        highestPrice = Math.max(...allPrices);
+        const sum = allPrices.reduce((acc, p) => acc + p, 0);
+        averagePrice = sum / allPrices.length;
       }
     } else {
       slug = await fetchPriceHistorySlug(productData.productName);
@@ -544,6 +546,21 @@ export async function ensurePriceHistory(productId: string) {
     const { error: insertErr } = await supabase.from("price_history").insert(historyPayload);
     if (insertErr) throw insertErr;
 
+    // Now update the product's aggregates to match the newly filled chart data
+    const allPrices = [product.current_price, ...historyPayload.map((h: any) => h.price)].filter(p => !isNaN(p) && p > 0);
+    
+    if (allPrices.length > 0) {
+       const lowestPrice = Math.min(...allPrices);
+       const highestPrice = Math.max(...allPrices);
+       const avgPrice = allPrices.reduce((a, b) => a + b, 0) / allPrices.length;
+       
+       await supabase.from("products").update({
+         lowest_price: lowestPrice,
+         highest_price: highestPrice,
+         average_price: avgPrice
+       }).eq("id", product.id);
+    }
+
     return { success: true, message: "History backfilled successfully" };
   } catch (error: any) {
     console.error("Ensure price history error:", error);
@@ -789,18 +806,24 @@ export async function refreshProductPrice(productId: string) {
     const newPrice = productData.currentPrice;
     const originalPrice = productData.originalPrice || parseFloat(product.original_price || 0);
 
-    // Calculate Aggregates
-    const lowestPrice = Math.min(parseFloat(product.lowest_price || newPrice), newPrice);
-    const highestPrice = Math.max(parseFloat(product.highest_price || newPrice), newPrice);
-
+    // Calculate Aggregates from all history
     const { data: history } = await supabase
       .from("price_history")
       .select("price")
       .eq("product_id", productId);
 
     const historyPrices = history ? history.map(h => parseFloat(h.price)) : [];
-    const sum = historyPrices.reduce((acc, p) => acc + p, 0) + newPrice;
-    const averagePrice = sum / (historyPrices.length + 1);
+    const allPrices = [...historyPrices, newPrice].filter(p => !isNaN(p) && p > 0);
+    
+    let lowestPrice = newPrice;
+    let highestPrice = newPrice;
+    let averagePrice = newPrice;
+    
+    if (allPrices.length > 0) {
+       lowestPrice = Math.min(...allPrices);
+       highestPrice = Math.max(...allPrices);
+       averagePrice = allPrices.reduce((a, b) => a + b, 0) / allPrices.length;
+    }
     const discountRate = originalPrice > 0 ? ((originalPrice - newPrice) / originalPrice) * 100 : 0;
 
     const updateData: any = {
