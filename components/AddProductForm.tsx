@@ -38,6 +38,15 @@ export default function AddProductForm({ user }) {
     } else {
       toast.info(result.message || "Scraping queued! Please wait...", { duration: 5000 });
       if (result.job_ids && result.job_ids.length > 0) {
+        // Trigger the worker for all jobs concurrently from the client to prevent Vercel suspension
+        result.job_ids.forEach((jobId: string) => {
+           fetch('/api/jobs/worker', {
+             method: 'POST',
+             headers: { 'Content-Type': 'application/json' },
+             body: JSON.stringify({ job_id: jobId })
+           }).catch(console.error);
+        });
+
         // Poll the first job ID to show overall progress (simplified for UI)
         pollJobStatus(result.job_ids[0], 0);
       } else {
@@ -129,6 +138,13 @@ export default function AddProductForm({ user }) {
       } else {
         toast.info(result.message || "Scraping queued...");
         if (result.job_id) {
+          // Trigger the worker from the client to prevent Vercel suspension
+          fetch('/api/jobs/worker', {
+             method: 'POST',
+             headers: { 'Content-Type': 'application/json' },
+             body: JSON.stringify({ job_id: result.job_id })
+          }).catch(console.error);
+          
           pollJobStatus(result.job_id, 0);
         } else {
           toast.success("Product tracked successfully!");

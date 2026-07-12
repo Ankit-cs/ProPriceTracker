@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { processScrapingJob } from "@/app/actions";
 
+export const maxDuration = 60; // Increase Vercel function timeout to 60 seconds
+
 export async function POST(req: Request) {
   try {
     const { job_id } = await req.json();

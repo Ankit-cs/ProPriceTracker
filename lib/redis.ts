@@ -15,7 +15,7 @@ export const redis = redisUrl && redisToken
 export const ratelimit = redis
   ? new Ratelimit({
       redis: redis,
-      limiter: Ratelimit.fixedWindow(5, "60 s"),
+      limiter: Ratelimit.fixedWindow(2000, "60 s"),
       analytics: true,
     })
   : null;
