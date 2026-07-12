@@ -5,6 +5,7 @@ import { addMultipleProducts, addProduct } from "@/app/actions";
 import AuthModal from "./AuthModal";
 import { Loader2, Search, Link2, PlusCircle } from "lucide-react";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 export default function AddProductForm({ user }) {
   const [mode, setMode] = useState<"url" | "search">("url");
@@ -14,6 +15,7 @@ export default function AddProductForm({ user }) {
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [searching, setSearching] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const router = useRouter();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -37,34 +39,55 @@ export default function AddProductForm({ user }) {
       toast.info(result.message || "Scraping queued! Please wait...", { duration: 5000 });
       if (result.job_ids && result.job_ids.length > 0) {
         // Poll the first job ID to show overall progress (simplified for UI)
-        pollJobStatus(result.job_ids[0]);
+        pollJobStatus(result.job_ids[0], 0);
       } else {
         toast.success("Products tracked successfully!");
         setUrl("");
         setLoading(false);
+        router.refresh();
       }
     }
   };
 
-  const pollJobStatus = async (jobId: string) => {
+  const pollJobStatus = async (jobId: string, pollCount: number = 0) => {
+    if (pollCount > 60) {
+      toast.error("Extraction is taking too long. It might have failed or timed out.");
+      setLoading(false);
+      return;
+    }
+    
+    if (pollCount === 30) {
+      toast.info("Still extracting... This can sometimes take a minute on complex websites.");
+    }
+
     try {
       const res = await fetch(`/api/jobs/${jobId}`);
+      if (!res.ok) {
+         if (res.status === 404) {
+           toast.error("Job not found.");
+           setLoading(false);
+         } else {
+           setTimeout(() => pollJobStatus(jobId, pollCount + 1), 2000);
+         }
+         return;
+      }
+
       const data = await res.json();
       
       if (data.status === "completed") {
         toast.success("Product scraped and tracked successfully!");
         setLoading(false);
         setUrl("");
+        router.refresh();
       } else if (data.status === "failed") {
         toast.error(data.error_message || "Failed to scrape product");
         setLoading(false);
       } else {
-        // pending or running
-        setTimeout(() => pollJobStatus(jobId), 2000);
+        setTimeout(() => pollJobStatus(jobId, pollCount + 1), 2000);
       }
     } catch (err) {
-      toast.error("Error checking job status");
-      setLoading(false);
+      console.error("Poll job status error:", err);
+      setTimeout(() => pollJobStatus(jobId, pollCount + 1), 2000);
     }
   };
 
@@ -106,10 +129,11 @@ export default function AddProductForm({ user }) {
       } else {
         toast.info(result.message || "Scraping queued...");
         if (result.job_id) {
-          pollJobStatus(result.job_id);
+          pollJobStatus(result.job_id, 0);
         } else {
           toast.success("Product tracked successfully!");
           setLoading(false);
+          router.refresh();
         }
       }
     } catch (err) {

@@ -27,10 +27,10 @@ export default function Header({ user }) {
           {/* Navigation links (Desktop) - Only show if authenticated */}
           {user && (
             <nav className="hidden lg:flex items-center gap-1">
-              <Link href="/deals" prefetch={true} className={`px-3.5 py-1.5 rounded-full text-[13px] font-medium transition-colors ${isActive('/deals') ? 'bg-ink/5 text-ink' : 'text-ink-soft hover:text-ink'}`}>
+              <Link href="/deals" prefetch={false} className={`px-3.5 py-1.5 rounded-full text-[13px] font-medium transition-colors ${isActive('/deals') ? 'bg-ink/5 text-ink' : 'text-ink-soft hover:text-ink'}`}>
                 Deals
               </Link>
-              <Link href="/categories" prefetch={true} className={`px-3.5 py-1.5 rounded-full text-[13px] font-medium transition-colors ${isActive('/categories') ? 'bg-ink/5 text-ink' : 'text-ink-soft hover:text-ink'}`}>
+              <Link href="/categories" prefetch={false} className={`px-3.5 py-1.5 rounded-full text-[13px] font-medium transition-colors ${isActive('/categories') ? 'bg-ink/5 text-ink' : 'text-ink-soft hover:text-ink'}`}>
                 Categories
               </Link>
               <Link href="/compare" prefetch={true} className={`px-3.5 py-1.5 rounded-full text-[13px] font-medium transition-colors ${isActive('/compare') ? 'bg-ink/5 text-ink' : 'text-ink-soft hover:text-ink'}`}>
