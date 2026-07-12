@@ -335,8 +335,16 @@ export default function ProductCard({ product }) {
             </Button>
           )}
 
+          <Button
+            size="sm"
+            onClick={() => window.open(product.url, '_blank')}
+            className="bg-accent text-white hover:bg-accent/90"
+          >
+            Buy Now
+          </Button>
+
           <WobbleButton 
-            title="View Product" 
+            title="View Details" 
             type="sm" 
             onClick={() => window.open(product.url, '_blank')}
           />

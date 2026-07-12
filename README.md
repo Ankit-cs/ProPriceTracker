@@ -6,33 +6,43 @@ ProPriceTracker is an intelligent and automated price tracking application that 
 
 ## Key Features
 
+### Tracking & Analysis Features
 - **Universal Tracking:** Monitor items from Amazon (using ScrapingAnt) and other sites like BestBuy, Zara, Walmart (via Firecrawl).
 - **Detailed Amazon Metadata:** Extracts and displays star ratings, review counts, popularity scores, choice badges, ASIN numbers, and collapsible features/descriptions.
 - **Price Trends & Alerts:** Visualize history with interactive charts, toggle price alerts, and receive email notifications on price drops.
 - **Signalist Trading Desk:** Build "Dream Setups" (Portfolios) with real-time price tracking. Includes technical indicators like Moving Average, Volatility %, Sentiment Scores, and "Buy/Wait" signals for products.
-- **Real-time Flashes:** UI instantly flashes green or red via Supabase WebSockets the moment a price changes in the backend.
+- **Location-Based Delivery Details:** Enter a specific Pincode for any Amazon product directly on its card to fetch accurate, real-time Delivery Dates and "Sold By" merchant data.
+- **Google Shopping Search:** Users can search products by name directly via SerpAPI instead of pasting raw URLs, tracking matching items instantly.
+- **Global Alternative Deals Feed:** Surfaces top discounted items tracked globally by the community at the bottom of the Price Drops page.
+- **Site Reviews:** Users can submit and read reviews and ratings for tracked platforms (Requires Authentication).
 - **Serverless AI Assistant:** A built-in AI chat that uses natural language processing (`sentiment` package) to analyze your questions, combining your emotional tone with historical price averages to give personalized "Buy Now" or "Wait" signals. Pure TypeScript, no Python backend required!
+
+### UI & User Experience
+- **Real-time Flashes:** UI instantly flashes green or red via Supabase WebSockets the moment a price changes in the backend.
 - **Hero Carousel:** Beautiful interactive product showcase on the landing page.
 - **Dynamic Auth / Dev Bypass:** Secure Google OAuth integration, with a built-in `BYPASS_AUTH` toggle for frictionless local sandbox testing.
-- **Automated Checks:** Daily cron jobs check tracked products and notify users of drop alerts.
 - **Export to PDF:** Easily generate and download a clean PDF report containing all tracked products, their descriptions, and thumbnail images.
-- **Location-Based Delivery Details:** Enter a specific Pincode for any Amazon product directly on its card to fetch accurate, real-time Delivery Dates and "Sold By" merchant data.
-- **Multi-Tenant Scaling Optimization:** Products are stored globally unique in the database and mapped to users, reducing total scraping calls and database bloat by over 90%.
-- **API Rate Limiting Protection:** Integrated `@upstash/ratelimit` via Upstash Redis to restrict spam requests on product tracks and organic search routes.
-- **Google Shopping Search:** Users can search products by name directly via SerpAPI instead of pasting raw URLs, tracking matching items instantly.
-- **Day 1 Price History Syncer:** Crawls Google for a product's PriceHistoryApp slug on Day 1, parsing and bulk-saving the last 90 days of historical date-price data into your database.
 - **PriceHistoryApp Embedded Visuals:** Displays the interactive historical graph iframe on product card footers as an additional option.
-- **Global Alternative Deals Feed:** Surfaces top discounted items tracked globally by the community at the bottom of the Price Drops page.
-- **Resilient Parsers & Cleaners:** Strips messy tracking parameters from URLs and parses international currency symbols (including Indian Lakhs) safely.
-- **Smart Notification Decision Engine:** Advanced cron logic that intelligently prioritizes email alerts (e.g., distinguishing an All-Time Low vs. a Target Threshold vs. a standard drop) to prevent notification fatigue.
-- **Embedded Email Charts:** Automatically generates and embeds static QuickChart visual graphs of a product's 14-day price history directly inside the email alerts so users never have to leave their inbox.
+
+### Scraping & Parsing Engine
 - **Native Flipkart Scraper:** Dedicated custom scraper (`lib/flipkart-scraper.ts`) using Axios + Cheerio that extracts full product metadata — title, current price, MRP, product image, star rating, review count, seller name, and delivery date — from Flipkart pages without Firecrawl, eliminating 500 timeout errors.
 - **Native Myntra Scraper:** Dedicated scraper (`lib/myntra-scraper.ts`) that calls Myntra's internal product gateway JSON API (`/gateway/v2/product/{id}`) directly, bypassing all anti-bot HTML blocking. Returns rich data including high-res images, discounted price, MRP, seller, and availability status.
 - **Smart Platform Router:** `app/actions.tsx` automatically detects the URL domain on product add and routes Amazon → ScrapingAnt, Flipkart → custom native scraper, Myntra → gateway API scraper, and other sites → Firecrawl. Zero manual selection needed.
 - **URL Cleaners for All Platforms:** `lib/url-cleaner.ts` strips all tracking/UTM parameters from Amazon, Flipkart, and Myntra URLs, saving canonical versions to the database for accurate de-duplication.
-- **Day 1 Price History Bulk Importer:** When a brand-new product is first tracked, the app fetches its slug from `pricehistoryapp.com` via SerpAPI and bulk-imports all historical date-price data into `price_history`, populating the chart from Day 1 for all platforms.
-- **Pricewatcha Webhook Integration:** Registers products with Pricewatcha in the background for passive webhook-driven price drop alerts, without blocking the main scrape flow.
+- **Resilient Parsers & Cleaners:** Strips messy tracking parameters from URLs and parses international currency symbols (including Indian Lakhs) safely.
 - **Resilient Image Extraction:** Multi-layered image extraction with CSS class fallbacks, `og:image` meta fallback, and a generic `img[src]` scan — ensures product images are always saved even when site markup changes.
+
+### Automation & Notifications
+- **Automated Checks:** Daily cron jobs check tracked products and notify users of drop alerts.
+- **Smart Notification Decision Engine:** Advanced cron logic that intelligently prioritizes email alerts (e.g., distinguishing an All-Time Low vs. a Target Threshold vs. a standard drop) to prevent notification fatigue.
+- **Embedded Email Charts:** Automatically generates and embeds static QuickChart visual graphs of a product's 14-day price history directly inside the email alerts so users never have to leave their inbox.
+- **Pricewatcha Webhook Integration:** Registers products with Pricewatcha in the background for passive webhook-driven price drop alerts, without blocking the main scrape flow.
+- **Day 1 Price History Syncer:** Crawls Google for a product's PriceHistoryApp slug on Day 1, parsing and bulk-saving the last 90 days of historical date-price data into your database.
+- **Day 1 Price History Bulk Importer:** When a brand-new product is first tracked, the app fetches its slug from `pricehistoryapp.com` via SerpAPI and bulk-imports all historical date-price data into `price_history`, populating the chart from Day 1 for all platforms.
+
+### Scalability & Security
+- **Multi-Tenant Scaling Optimization:** Products are stored globally unique in the database and mapped to users, reducing total scraping calls and database bloat by over 90%.
+- **API Rate Limiting Protection:** Integrated `@upstash/ratelimit` via Upstash Redis to restrict spam requests on product tracks and organic search routes.
 
 ## Architecture A: Product Tracking Flow
 
