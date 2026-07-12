@@ -43,13 +43,7 @@ export default async function Home() {
   ];
 
   return (
-    <main className="min-h-screen bg-background text-ink relative overflow-x-hidden pt-24 pb-12">
-      {/* Aurora Background Effects */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -top-1/3 left-1/2 h-[80vh] w-[80vh] -translate-x-1/2 rounded-full blur-3xl opacity-40" style={{ background: "radial-gradient(closest-side, oklch(0.85 0.09 55 / 0.55), transparent 70%)" }}></div>
-        <div className="absolute bottom-[-30%] right-[-10%] h-[70vh] w-[70vh] rounded-full blur-3xl opacity-30" style={{ background: "radial-gradient(closest-side, oklch(0.9 0.05 80 / 0.6), transparent 70%)" }}></div>
-      </div>
-      <div className="pointer-events-none absolute inset-0 opacity-[0.25] mix-blend-multiply" style={{ backgroundImage: "radial-gradient(oklch(0.5 0.02 70 / 0.08) 1px, transparent 1px)", backgroundSize: "3px 3px" }}></div>
+    <main className="min-h-screen relative z-10 pt-24 pb-12">
 
 
 
