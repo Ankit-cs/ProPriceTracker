@@ -15,7 +15,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 
-const BYPASS_AUTH = true; // Set to true only for local testing (disables auth)
+const BYPASS_AUTH = false; // Set to true only for local testing (disables auth)
 
 const getServiceRoleClient = () => {
   return createSupabaseClient(
