@@ -97,7 +97,18 @@ export async function addProduct(formData) {
     if (jobErr) throw jobErr;
 
     // Trigger background worker asynchronously without waiting
-    fetch(`${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/api/jobs/worker`, {
+    let baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+    try {
+      const { headers } = await import("next/headers");
+      const headersList = await headers();
+      const host = headersList.get("host");
+      if (host) {
+         const protocol = host.includes("localhost") ? "http" : "https";
+         baseUrl = `${protocol}://${host}`;
+      }
+    } catch(e) {}
+    
+    fetch(`${baseUrl}/api/jobs/worker`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ job_id: job.id })
